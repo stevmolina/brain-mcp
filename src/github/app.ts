@@ -51,10 +51,25 @@ export async function findInstallationId(owner: string, repo: string): Promise<n
   }
 }
 
+/**
+ * An installation-authenticated client for calls that belong to no brain in
+ * particular, such as resolving a GitHub account id to a login.
+ *
+ * `GET /user/{account_id}` takes neither an app JWT (401) nor nothing much
+ * (60 requests an hour, shared across everything on the box). Any installation
+ * token is a valid credential for it and carries the App's own rate limit.
+ */
+async function lookupOctokit(): Promise<Octokit | null> {
+  const { data } = await appOctokit().request('GET /app/installations', { per_page: 1 });
+  const first = data[0];
+  return first ? installationOctokit(first.id) : null;
+}
+
 /** GitHub login for a numeric account id. WorkOS gives us the id, not the login. */
 export async function githubLoginForAccountId(accountId: string | number): Promise<string | null> {
+  const octokit = (await lookupOctokit()) ?? new Octokit();
   try {
-    const { data } = await appOctokit().request('GET /user/{account_id}', {
+    const { data } = await octokit.request('GET /user/{account_id}', {
       account_id: Number(accountId),
     } as never);
     return (data as { login?: string }).login ?? null;
