@@ -3,8 +3,8 @@
 FROM node:24-slim AS build
 WORKDIR /app
 RUN corepack enable
-COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile || pnpm install
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY tsconfig.json ./
 COPY src ./src
 COPY scripts ./scripts
@@ -13,8 +13,8 @@ RUN pnpm build
 FROM node:24-slim AS deps
 WORKDIR /app
 RUN corepack enable
-COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --prod --frozen-lockfile || pnpm install --prod
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --prod --frozen-lockfile
 
 FROM node:24-slim
 ENV NODE_ENV=production
