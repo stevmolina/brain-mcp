@@ -1,0 +1,3 @@
+setup:
+  project: brain-mcp
+  config: dev

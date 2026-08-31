@@ -1,0 +1,43 @@
+{
+  "name": "brain-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "migrate": "tsx scripts/migrate.ts",
+    "register-brain": "tsx scripts/register-brain.ts",
+    "offboard-brain": "tsx scripts/offboard-brain.ts",
+    "reindex": "tsx scripts/reindex.ts",
+    "reconcile": "tsx src/reconcile/run.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/express": "^2.0.0",
+    "@modelcontextprotocol/node": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "@octokit/auth-app": "^8.0.0",
+    "@octokit/rest": "^22.0.0",
+    "express": "^5.1.0",
+    "jose": "^6.2.0",
+    "pg": "^8.16.0",
+    "picomatch": "^4.0.2",
+    "tar-stream": "^3.1.7",
+    "zod": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.0",
+    "@types/picomatch": "^4.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
