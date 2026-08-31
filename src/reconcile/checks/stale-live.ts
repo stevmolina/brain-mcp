@@ -2,6 +2,7 @@
  * profile's threshold it needs re-checking against the live system. */
 import { db } from '../../db/client.js';
 import { resolveProfile } from '../../profiles/index.js';
+import { isoDay } from '../../dates.js';
 import type { Check, Finding } from './types.js';
 
 export const staleLive: Check = {
@@ -24,7 +25,7 @@ export const staleLive: Check = {
       severity: 'warn',
       claimId: row.id,
       pagePath: row.page_path,
-      detail: `Verified ${String(row.verified_at).slice(0, 10)}, ${row.days} days ago; threshold is ${staleLiveDays}.`,
+      detail: `Verified ${isoDay(row.verified_at)}, ${row.days} days ago; threshold is ${staleLiveDays}.`,
     }));
   },
 };

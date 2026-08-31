@@ -1,10 +1,5 @@
+import { isoDay } from '../dates.js';
 import type { BrainRow, ClaimRow, ClaimView } from '../types.js';
-
-function isoDate(value: Date | string | null): string | null {
-  if (!value) return null;
-  if (typeof value === 'string') return value.slice(0, 10);
-  return value.toISOString().slice(0, 10);
-}
 
 /**
  * Every returned claim carries where it came from, when it was verified, and its
@@ -20,7 +15,7 @@ export function toClaimView(brain: BrainRow, row: ClaimRow): ClaimView {
     line: row.line,
     heading: row.heading,
     authority: row.authority,
-    verified_at: isoDate(row.verified_at),
+    verified_at: isoDay(row.verified_at),
     commit: row.commit_sha,
     superseded_by: row.superseded_by,
     // Page paths carry spaces and other characters GitHub needs percent-encoded,

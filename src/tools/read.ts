@@ -9,6 +9,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { db } from '../db/client.js';
 import { requireBrain } from '../auth/access.js';
 import { workosUserId } from '../auth/workos.js';
+import { isoDay } from '../dates.js';
 import { handling, renderClaimLine, textResult, toClaimView } from './shared.js';
 import type { ClaimRow, SourceRow } from '../types.js';
 import type { ToolContext } from './index.js';
@@ -159,7 +160,7 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
               .map(
                 (s) =>
                   `- ${s.path} (sha256 ${s.sha256.slice(0, 12)}…${s.origin ? `, from ${s.origin}` : ''}${
-                    s.received_at ? `, received ${String(s.received_at).slice(0, 10)}` : ''
+                    s.received_at ? `, received ${isoDay(s.received_at)}` : ''
                   })`,
               )
               .join('\n')}`

@@ -148,3 +148,12 @@ describe('claim provenance links', () => {
     expect(view.url).toBe('https://github.com/o/r/blob/abc/03%20Projects/Deliverables%20Log.md#L60');
   });
 });
+
+describe('dates', () => {
+  it('renders a Postgres date column as an ISO day, not a JS Date string', async () => {
+    const { isoDay } = await import('../src/dates.js');
+    expect(isoDay(new Date('2024-01-01T00:00:00Z'))).toBe('2024-01-01');
+    expect(isoDay('2026-08-31')).toBe('2026-08-31');
+    expect(isoDay(null)).toBeNull();
+  });
+});
