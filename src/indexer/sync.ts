@@ -96,13 +96,22 @@ export async function indexBrainAtCommit(brain: BrainRow, commit: string): Promi
   const unique = [...byId.values()];
 
   // supersedes: <id prefix>, resolved within this brain only.
+  //
+  // The usual case is that the superseded claim is *gone*: update_fact replaces
+  // the old wording in place, so the next rebuild never sees it again. The edge
+  // is still recorded against the prefix the marker names, because a pointer to
+  // something no longer in the repo is the whole point of a supersession. Only
+  // an ambiguous prefix, matching two claims that both still exist, is a fault.
   const supersessions: { old: string; new: string }[] = [];
   const unresolved: string[] = [];
   for (const claim of unique) {
     for (const prefix of claim.supersedes) {
       const targets = unique.filter((c) => c.id.startsWith(prefix) && c.id !== claim.id);
-      if (targets.length === 1) supersessions.push({ old: targets[0]!.id, new: claim.id });
-      else unresolved.push(prefix);
+      if (targets.length > 1) {
+        unresolved.push(prefix);
+        continue;
+      }
+      supersessions.push({ old: targets[0]?.id ?? prefix, new: claim.id });
     }
   }
 

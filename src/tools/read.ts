@@ -125,9 +125,13 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
         [brain.id, claim.id],
       );
 
-      const { rows: replaced } = await db().query<ClaimRow>(
-        `select c.* from claims c
-           join supersessions s on s.old_claim_id = c.id and s.brain_id = c.brain_id
+      // old_claim_id is usually a claim that no longer exists in the repo, so
+      // this reports the pointer itself and fills in the claim only when the
+      // superseded wording happens to still be there.
+      const { rows: replaced } = await db().query<{ old_claim_id: string; text: string | null; page_path: string | null }>(
+        `select s.old_claim_id, c.text, c.page_path
+           from supersessions s
+           left join claims c on c.brain_id = s.brain_id and c.id = s.old_claim_id
           where s.brain_id = $1 and s.new_claim_id = $2`,
         [brain.id, claim.id],
       );
@@ -163,7 +167,15 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
       ];
 
       if (replaced.length) {
-        lines.push('', 'Replaces:', ...replaced.map((r) => renderClaimLine(toClaimView(brain, r))));
+        lines.push(
+          '',
+          'Replaces:',
+          ...replaced.map((r) =>
+            r.text
+              ? `- ${r.text}\n  ${r.page_path} [${r.old_claim_id.slice(0, 12)}]`
+              : `- claim ${r.old_claim_id.slice(0, 16)}, no longer present in the repo`,
+          ),
+        );
       }
       if (replacedBy.length) {
         lines.push('', 'Replaced by:', ...replacedBy.map((r) => renderClaimLine(toClaimView(brain, r))));
@@ -173,7 +185,7 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
         brain: brain.id,
         claim: view,
         sources,
-        replaces: replaced.map((r) => toClaimView(brain, r)),
+        replaces: replaced,
         replaced_by: replacedBy.map((r) => toClaimView(brain, r)),
       });
     }),

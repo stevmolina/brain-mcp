@@ -117,3 +117,20 @@ describe('repo path resolution', () => {
     expect(resolveRepoPath('index.md', 'sources/a.md#heading')).toBe('sources/a.md');
   });
 });
+
+describe('supersession markers', () => {
+  it('reads a supersedes prefix off an updated claim', () => {
+    const [claim] = parse(
+      ['- The revised wording.', '  <!-- authority: live | verified_at: 2026-08-31 | supersedes: 8eb428c6620d594e -->'].join('\n'),
+    );
+    expect(claim?.supersedes).toEqual(['8eb428c6620d594e']);
+    // The id must not depend on the marker, or updating a claim twice would
+    // change what the earlier marker points at.
+    expect(claim?.id).toBe(claimId('test/brain', 'wiki/scope.md', 'The revised wording.'));
+  });
+
+  it('reads several supersedes targets from one marker', () => {
+    const [claim] = parse('- Merged claim. <!-- supersedes: aaaaaaaa, bbbbbbbb -->');
+    expect(claim?.supersedes).toEqual(['aaaaaaaa', 'bbbbbbbb']);
+  });
+});
