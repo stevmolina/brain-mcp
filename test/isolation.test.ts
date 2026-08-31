@@ -140,3 +140,17 @@ describe('rebuildability', () => {
     await seedBrain(A, USER_A, SECRET_A, claimA);
   });
 });
+
+describe('token verification', () => {
+  it('reports a bad token as invalid_token, so a client knows to refresh', async () => {
+    process.env.AUTHKIT_ISSUER ||= 'https://navigable-desert-09-staging.authkit.app';
+    process.env.MCP_RESOURCE_URL ||= 'https://brain.mcpbox.dev/mcp';
+    const { createTokenVerifier } = await import('../src/auth/workos.js');
+    const { OAuthError } = await import('@modelcontextprotocol/server');
+    // A 500 would tell an MCP client the server is broken rather than that its
+    // token expired, so it would never refresh and retry.
+    await expect(createTokenVerifier().verifyAccessToken('not.a.jwt')).rejects.toSatisfy(
+      (e: unknown) => e instanceof OAuthError && (e as { code: string }).code === 'invalid_token',
+    );
+  });
+});

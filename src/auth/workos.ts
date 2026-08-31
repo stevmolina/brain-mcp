@@ -10,7 +10,7 @@
  * @modelcontextprotocol/server-legacy and are deliberately not used.
  */
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
-import type { AuthInfo, OAuthMetadata, OAuthTokenVerifier } from '@modelcontextprotocol/server';
+import { OAuthError, type AuthInfo, type OAuthMetadata, type OAuthTokenVerifier } from '@modelcontextprotocol/server';
 import { loadConfig } from '../config.js';
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
@@ -49,10 +49,19 @@ export function createTokenVerifier(): OAuthTokenVerifier {
         jwks = createRemoteJWKSet(new URL(meta.jwks_uri ?? `${config.authkitIssuer}/oauth2/jwks`));
       }
 
-      const { payload } = await jwtVerify(token, jwks, {
-        issuer: config.authkitIssuer,
-        audience: config.mcpResourceUrl,
-      });
+      // Anything wrong with the token is `invalid_token`, which the bearer
+      // middleware answers with 401 and a WWW-Authenticate challenge. Letting a
+      // jose error escape instead produces a 500, and a 500 tells an MCP client
+      // the server is broken rather than that its token needs refreshing.
+      let payload: JWTPayload;
+      try {
+        ({ payload } = await jwtVerify(token, jwks, {
+          issuer: config.authkitIssuer,
+          audience: config.mcpResourceUrl,
+        }));
+      } catch (error) {
+        throw new OAuthError('invalid_token', (error as Error).message);
+      }
 
       const claims = payload as JWTPayload & {
         sid?: string;
@@ -62,7 +71,7 @@ export function createTokenVerifier(): OAuthTokenVerifier {
         scope?: string;
       };
 
-      if (!claims.sub) throw new Error('Token has no subject');
+      if (!claims.sub) throw new OAuthError('invalid_token', 'Token has no subject');
 
       const info: BrainAuthInfo = {
         token,

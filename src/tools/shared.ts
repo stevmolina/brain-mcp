@@ -52,6 +52,28 @@ export function errorResult(message: string) {
   };
 }
 
+/**
+ * Wraps a tool handler so an authorization refusal comes back as a tool error
+ * the caller can read and act on, rather than as a transport failure. A caller
+ * who named the wrong brain, or who has more than one, needs to be told which,
+ * not handed a 500.
+ */
+export function handling<A, C, R>(
+  handler: (args: A, ctx: C) => Promise<R>,
+): (args: A, ctx: C) => Promise<R | ReturnType<typeof errorResult>> {
+  return async (args, ctx) => {
+    try {
+      return await handler(args, ctx);
+    } catch (error) {
+      if (error instanceof ToolRefusal) return errorResult(error.message);
+      throw error;
+    }
+  };
+}
+
+/** A refusal the caller should see verbatim: no brain, wrong brain, refused write. */
+export class ToolRefusal extends Error {}
+
 export function today(): string {
   return new Date().toISOString().slice(0, 10);
 }

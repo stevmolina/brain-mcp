@@ -10,9 +10,12 @@
 import { loadConfig } from '../config.js';
 import { db } from '../db/client.js';
 import { appOctokit, githubLoginForAccountId, installationOctokit } from '../github/app.js';
+import { ToolRefusal } from '../tools/shared.js';
 import type { BrainRow } from '../types.js';
 
-export class Forbidden extends Error {}
+/** Denied access to a brain. A ToolRefusal, so the caller reads it as a tool
+ * error and can correct the call rather than seeing a transport failure. */
+export class Forbidden extends ToolRefusal {}
 
 interface CacheEntry<T> {
   value: T;

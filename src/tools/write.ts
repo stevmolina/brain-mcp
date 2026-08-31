@@ -14,7 +14,7 @@ import { openPullRequest, WriteRefused, type PullRequestResult } from '../github
 import { resolveProfile } from '../profiles/index.js';
 import { appendClaim, locateClaim, readMarker, removeClaim, replaceClaim } from './edits.js';
 import { loadClaim } from './read.js';
-import { errorResult, textResult, today } from './shared.js';
+import { errorResult, handling, textResult, today } from './shared.js';
 import type { ToolContext } from './index.js';
 
 const brainArg = z.string().optional().describe('Brain id, e.g. "owner/repo".');
@@ -58,7 +58,7 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async (args, mcp) => {
+    handling(async (args, mcp) => {
       const brain = await requireBrain(workosUserId(mcp.http?.authInfo), args.brain);
       const profile = resolveProfile(brain.profile);
       const page = args.page ?? profile.writePage;
@@ -89,7 +89,7 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
       } catch (error) {
         return refusal(error);
       }
-    },
+    }),
   );
 
   server.registerTool(
@@ -107,7 +107,7 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async (args, mcp) => {
+    handling(async (args, mcp) => {
       const brain = await requireBrain(workosUserId(mcp.http?.authInfo), args.brain);
       const claim = await loadClaim(brain.id, args.claim_id);
       if (!claim) return errorResult(`No claim ${args.claim_id} in ${brain.id}.`);
@@ -152,7 +152,7 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
       } catch (error) {
         return refusal(error);
       }
-    },
+    }),
   );
 
   server.registerTool(
@@ -168,7 +168,7 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
     },
-    async (args, mcp) => {
+    handling(async (args, mcp) => {
       const brain = await requireBrain(workosUserId(mcp.http?.authInfo), args.brain);
       const claim = await loadClaim(brain.id, args.claim_id);
       if (!claim) return errorResult(`No claim ${args.claim_id} in ${brain.id}.`);
@@ -203,7 +203,7 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
       } catch (error) {
         return refusal(error);
       }
-    },
+    }),
   );
 
   void ctx;

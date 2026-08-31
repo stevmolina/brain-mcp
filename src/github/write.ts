@@ -11,9 +11,10 @@ import { randomBytes } from 'node:crypto';
 import type { Octokit } from '@octokit/rest';
 import { installationOctokit } from './app.js';
 import { resolveProfile } from '../profiles/index.js';
+import { ToolRefusal } from '../tools/shared.js';
 import type { BrainRow } from '../types.js';
 
-export class WriteRefused extends Error {}
+export class WriteRefused extends ToolRefusal {}
 
 export interface PullRequestResult {
   url: string;

@@ -9,7 +9,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { db } from '../db/client.js';
 import { requireBrain } from '../auth/access.js';
 import { workosUserId } from '../auth/workos.js';
-import { renderClaimLine, textResult, toClaimView } from './shared.js';
+import { handling, renderClaimLine, textResult, toClaimView } from './shared.js';
 import type { ClaimRow, SourceRow } from '../types.js';
 import type { ToolContext } from './index.js';
 
@@ -36,7 +36,7 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
       }),
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    async (args, mcp) => {
+    handling(async (args, mcp) => {
       const brain = await requireBrain(workosUserId(mcp.http?.authInfo), args.brain);
       const { rows } = await db().query<ClaimRow & { rank: number }>(
         `select c.*, ts_rank(c.fts, websearch_to_tsquery('english', $2)) as rank
@@ -53,7 +53,7 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
       const header = `${views.length} claim${views.length === 1 ? '' : 's'} in ${brain.id} for "${args.query}"`;
       const body = views.length ? views.map(renderClaimLine).join('\n') : 'No matching claims.';
       return textResult(`${header}\n\n${body}`, { brain: brain.id, claims: views });
-    },
+    }),
   );
 
   server.registerTool(
@@ -67,7 +67,7 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
       }),
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    async (args, mcp) => {
+    handling(async (args, mcp) => {
       const brain = await requireBrain(workosUserId(mcp.http?.authInfo), args.brain);
       const claim = await loadClaim(brain.id, args.claim_id);
       if (!claim) return textResult(`No claim ${args.claim_id} in ${brain.id}.`);
@@ -96,7 +96,7 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
         claim: view,
         nearby: neighbours.map((row) => toClaimView(brain, row)),
       });
-    },
+    }),
   );
 
   server.registerTool(
@@ -111,7 +111,7 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
       }),
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    async (args, mcp) => {
+    handling(async (args, mcp) => {
       const brain = await requireBrain(workosUserId(mcp.http?.authInfo), args.brain);
       const claim = await loadClaim(brain.id, args.claim_id);
       if (!claim) return textResult(`No claim ${args.claim_id} in ${brain.id}.`);
@@ -176,7 +176,7 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
         replaces: replaced.map((r) => toClaimView(brain, r)),
         replaced_by: replacedBy.map((r) => toClaimView(brain, r)),
       });
-    },
+    }),
   );
 
   void ctx;
