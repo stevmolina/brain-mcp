@@ -133,3 +133,18 @@ describe('removing', () => {
     expect(claims.map((c) => c.text)).toEqual(['The second claim.']);
   });
 });
+
+describe('claim provenance links', () => {
+  it('percent-encodes page paths that contain spaces', async () => {
+    const { toClaimView } = await import('../src/tools/shared.js');
+    const view = toClaimView(
+      { id: 'o/r', repo_owner: 'o', repo_name: 'r' } as never,
+      {
+        id: 'x', brain_id: 'o/r', text: 't', page_path: '03 Projects/Deliverables Log.md',
+        line: 60, heading: null, authority: null, verified_at: null,
+        commit_sha: 'abc', superseded_by: null,
+      } as never,
+    );
+    expect(view.url).toBe('https://github.com/o/r/blob/abc/03%20Projects/Deliverables%20Log.md#L60');
+  });
+});

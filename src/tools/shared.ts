@@ -23,7 +23,11 @@ export function toClaimView(brain: BrainRow, row: ClaimRow): ClaimView {
     verified_at: isoDate(row.verified_at),
     commit: row.commit_sha,
     superseded_by: row.superseded_by,
-    url: `https://github.com/${brain.repo_owner}/${brain.repo_name}/blob/${row.commit_sha}/${row.page_path}#L${row.line}`,
+    // Page paths carry spaces and other characters GitHub needs percent-encoded,
+    // and the link is the whole point of returning provenance.
+    url:
+      `https://github.com/${brain.repo_owner}/${brain.repo_name}/blob/${row.commit_sha}/` +
+      `${row.page_path.split('/').map(encodeURIComponent).join('/')}#L${row.line}`,
   };
 }
 
