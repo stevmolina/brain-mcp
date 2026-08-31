@@ -109,71 +109,97 @@ export async function indexBrainAtCommit(brain: BrainRow, commit: string): Promi
   let edges = 0;
 
   await withTransaction(async (client) => {
+    // Two pushes in quick succession would otherwise each delete the other's
+    // rows and collide on the claim primary key. The lock is per brain and is
+    // released with the transaction, so rebuilds of different brains still run
+    // side by side.
+    await client.query('select pg_advisory_xact_lock(hashtext($1))', [`brain-mcp:index:${brain.id}`]);
+
     // Full rebuild: claim_sources and supersessions cascade off claims/sources.
     await client.query('delete from supersessions where brain_id = $1', [brain.id]);
     await client.query('delete from claims where brain_id = $1', [brain.id]);
     await client.query('delete from sources where brain_id = $1', [brain.id]);
 
-    for (const file of sourceFiles) {
-      const meta = manifest.get(file.path) ?? manifest.get(file.path.slice(sourcesPrefix.length)) ?? null;
+    // Inserted column-wise through unnest rather than row by row: a brain of a
+    // few thousand claims is one round trip per table instead of a few thousand,
+    // which is the difference between a push webhook finishing in a second and
+    // finishing in a minute.
+    if (sourceFiles.length) {
+      const meta = sourceFiles.map(
+        (file) => manifest.get(file.path) ?? manifest.get(file.path.slice(sourcesPrefix.length)) ?? null,
+      );
       await client.query(
         `insert into sources (id, brain_id, path, sha256, bytes, origin, received_at, commit_sha)
-         values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+         select * from unnest(
+           $1::text[], $2::text[], $3::text[], $4::text[], $5::int[], $6::text[], $7::date[], $8::text[]
+         )`,
         [
-          sourceId(brain.id, file.path),
-          brain.id,
-          file.path,
-          file.sha256,
-          file.bytes,
-          meta?.origin ?? null,
-          meta?.receivedAt ?? null,
-          commit,
+          sourceFiles.map((file) => sourceId(brain.id, file.path)),
+          sourceFiles.map(() => brain.id),
+          sourceFiles.map((file) => file.path),
+          sourceFiles.map((file) => file.sha256),
+          sourceFiles.map((file) => file.bytes),
+          meta.map((m) => m?.origin ?? null),
+          meta.map((m) => m?.receivedAt ?? null),
+          sourceFiles.map(() => commit),
         ],
       );
     }
 
-    for (const claim of unique) {
+    if (unique.length) {
       await client.query(
         `insert into claims (id, brain_id, text, page_path, line, heading, authority, verified_at, commit_sha)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+         select * from unnest(
+           $1::text[], $2::text[], $3::text[], $4::text[], $5::int[], $6::text[], $7::text[], $8::date[], $9::text[]
+         )`,
         [
-          claim.id,
-          brain.id,
-          claim.text,
-          claim.pagePath,
-          claim.line,
-          claim.heading,
-          claim.authority,
-          claim.verifiedAt,
-          commit,
+          unique.map((claim) => claim.id),
+          unique.map(() => brain.id),
+          unique.map((claim) => claim.text),
+          unique.map((claim) => claim.pagePath),
+          unique.map((claim) => claim.line),
+          unique.map((claim) => claim.heading),
+          unique.map((claim) => claim.authority),
+          unique.map((claim) => claim.verifiedAt),
+          unique.map(() => commit),
         ],
       );
     }
 
+    const edgeClaims: string[] = [];
+    const edgeSources: string[] = [];
     for (const claim of unique) {
       for (const path of claim.sourcePaths) {
-        const id = sourceId(brain.id, path);
-        const inserted = await client.query(
-          `insert into claim_sources (brain_id, claim_id, source_id)
-           select $1, $2, $3 where exists (select 1 from sources where id = $3 and brain_id = $1)
-           on conflict do nothing`,
-          [brain.id, claim.id, id],
-        );
-        edges += inserted.rowCount ?? 0;
+        edgeClaims.push(claim.id);
+        edgeSources.push(sourceId(brain.id, path));
       }
     }
-
-    for (const link of supersessions) {
-      await client.query(
-        `insert into supersessions (brain_id, old_claim_id, new_claim_id) values ($1, $2, $3)
+    if (edgeClaims.length) {
+      // The join against sources drops a citation pointing at a file that is not
+      // in the repo at this commit, rather than failing the whole rebuild.
+      const result = await client.query(
+        `insert into claim_sources (brain_id, claim_id, source_id)
+         select $1, e.claim_id, e.source_id
+           from unnest($2::text[], $3::text[]) as e(claim_id, source_id)
+           join sources s on s.id = e.source_id and s.brain_id = $1
          on conflict do nothing`,
-        [brain.id, link.old, link.new],
+        [brain.id, edgeClaims, edgeSources],
       );
-      await client.query('update claims set superseded_by = $1 where id = $2 and brain_id = $3', [
-        link.new,
-        link.old,
-        brain.id,
-      ]);
+      edges = result.rowCount ?? 0;
+    }
+
+    if (supersessions.length) {
+      await client.query(
+        `insert into supersessions (brain_id, old_claim_id, new_claim_id)
+         select $1, * from unnest($2::text[], $3::text[]) on conflict do nothing`,
+        [brain.id, supersessions.map((s) => s.old), supersessions.map((s) => s.new)],
+      );
+      await client.query(
+        `update claims c set superseded_by = s.new_claim_id
+           from supersessions s
+          where s.brain_id = $1 and c.brain_id = $1 and c.id = s.old_claim_id`,
+        [brain.id],
+      );
     }
 
     await client.query(
