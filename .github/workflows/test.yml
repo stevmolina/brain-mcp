@@ -1,0 +1,68 @@
+# Typecheck and test on every pull request and every push to main.
+#
+# WHY THE ENV BLOCK. src/config.ts calls required() on eight variables at
+# import time, so test/isolation.test.ts cannot even load without them. That is
+# why `pnpm test` fails on a clean checkout today: 12 isolation tests skip and
+# the file errors in beforeAll. None of the values below are secrets. The two
+# URLs are the public defaults the test itself falls back to, and the rest are
+# placeholders the tests never authenticate with.
+#
+# The Postgres service is real, though. The isolation suite writes rows and
+# then asks brain-A questions while scoped to brain-B, which only means
+# something against a live database with the migrations applied.
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: brain_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/brain_test
+      MCP_RESOURCE_URL: https://brain.mcpbox.dev/mcp
+      AUTHKIT_ISSUER: https://navigable-desert-09-staging.authkit.app
+      WORKOS_API_KEY: ci-placeholder
+      WORKOS_CLIENT_ID: ci-placeholder
+      GITHUB_APP_ID: "1"
+      GITHUB_APP_PRIVATE_KEY_B64: Y2k=
+      GITHUB_WEBHOOK_SECRET: ci-placeholder
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned: package.json carries no packageManager field, and the lockfile
+      # is version 9.0. pnpm 10 reads it without rewriting it.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm run test
