@@ -55,7 +55,15 @@ export async function createApp(): Promise<express.Express> {
 
   app.use(express.json({ limit: '4mb' }));
 
-  app.get('/healthz', async (_req, res) => {
+  // Liveness only. The container health check calls this every 30s, and a
+  // database query here kept Neon's compute from ever suspending, which spent
+  // the free plan's monthly compute hours by mid-month.
+  app.get('/healthz', (_req, res) => {
+    res.json({ ok: true, version: VERSION, environment: config.environment });
+  });
+
+  // Readiness, for a human or a monitor that can afford to wake the database.
+  app.get('/readyz', async (_req, res) => {
     try {
       await db().query('select 1');
       res.json({ ok: true, version: VERSION, environment: config.environment });
