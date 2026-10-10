@@ -1,17 +1,21 @@
 /**
- * The three write tools. Writes go to the truth because it's reviewable.
+ * The three write tools. Writes go to the truth, in git.
  *
- * Each one opens a pull request and stops. Nothing merges, nothing touches the
- * brain's sources directory, and no row appears in the index until the indexer
- * reprocesses the merged commit -- which the tool result says out loud, so a
- * caller never mistakes an open PR for a recorded fact.
+ * The brain's mode for the action decides the outcome:
+ *   review (the default) opens a pull request and stops
+ *   auto commits on the default branch and reindexes
+ *   read_only refuses
+ *
+ * Nothing in this file merges. Nothing writes the brain's sources directory.
  */
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import { requireBrain } from '../auth/access.js';
 import { workosUserId } from '../auth/workos.js';
-import { openPullRequest, WriteRefused, type PullRequestResult } from '../github/write.js';
+import { commitToDefaultBranch, openPullRequest, WriteRefused } from '../github/write.js';
+import { indexBrainAtCommit } from '../indexer/sync.js';
 import { resolveProfile } from '../profiles/index.js';
+import { auditCommitMessage, executeWrite, type WriteIO } from '../writes/execute.js';
 import { appendClaim, locateClaim, readMarker, removeClaim, replaceClaim } from './edits.js';
 import { loadClaim } from './read.js';
 import { errorResult, handling, textResult, today } from './shared.js';
@@ -26,24 +30,42 @@ const authorityArg = z
     'Whether this line is truth or a summary of something else, e.g. "live". Only a human knows; leave it off for a durable fact that is never chased.',
   );
 
-function pending(result: PullRequestResult, what: string): string {
+const writeIo: WriteIO = {
+  openPullRequest,
+  commitToDefaultBranch,
+  indexAtCommit: async (brain, sha) => {
+    await indexBrainAtCommit(brain, sha);
+  },
+};
+
+function refusal(error: unknown) {
+  if (error instanceof WriteRefused) return errorResult(error.message);
+  throw error;
+}
+
+function truncate(text: string, max = 68): string {
+  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+}
+
+function prBody(brainId: string, requestedBy: string, lines: string[]): string {
   return [
-    `${what}`,
+    ...lines,
     '',
-    `Pull request: ${result.url}`,
-    `Branch: ${result.branch} -> ${result.page}`,
-    '',
-    'Not recorded yet. The brain changes when this PR is merged and the indexer reprocesses that commit.',
+    '---',
+    `Opened by brain-mcp for the \`${brainId}\` brain, requested by \`${requestedBy}\`.`,
+    'Approve to save. The index rebuilds from the merged commit.',
   ].join('\n');
 }
+
+const modeNote =
+  'review (the default) opens a pull request you approve to save. auto commits to the default branch and is searchable immediately. read_only refuses. See get_write_modes.';
 
 export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
   server.registerTool(
     'remember',
     {
       title: 'Remember a new claim',
-      description:
-        'Propose a new claim for a brain. Opens a pull request against the brain repo. Never merges, never writes to the sources directory.',
+      description: `Save a new claim. ${modeNote}`,
       inputSchema: z.object({
         text: z.string().min(3).describe('The claim, as one sentence.'),
         brain: brainArg,
@@ -59,33 +81,36 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
     handling(async (args, mcp) => {
-      const brain = await requireBrain(workosUserId(mcp.http?.authInfo), args.brain);
+      const userId = workosUserId(mcp.http?.authInfo);
+      const brain = await requireBrain(userId, args.brain);
       const profile = resolveProfile(brain.profile);
       const page = args.page ?? profile.writePage;
       const heading = args.heading ?? profile.writeHeading;
       const verifiedAt = args.verified_at ?? (args.authority ? today() : null);
 
       try {
-        const result = await openPullRequest(brain, {
-          page,
-          branchPrefix: 'brain/remember',
-          commitMessage: `brain: remember a claim in ${page}`,
-          title: `Remember: ${truncate(args.text)}`,
-          body: prBody(brain.id, [
-            `Adds one claim to \`${page}\` under **${heading}**.`,
-            args.authority ? `Authority \`${args.authority}\`, verified \`${verifiedAt}\`.` : 'Unmarked, so durable.',
-          ]),
-          apply: (content) =>
-            appendClaim(content, heading, args.text, {
-              authority: args.authority ?? null,
-              verifiedAt,
-            }),
-        });
-        return textResult(pending(result, `Proposed a new claim in ${brain.id}.`), {
-          brain: brain.id,
-          pull_request: result,
-          recorded: false,
-        });
+        const outcome = await executeWrite(
+          brain,
+          'remember',
+          {
+            page,
+            branchPrefix: 'brain/remember',
+            commitMessage: auditCommitMessage('remember', page, args.text, userId),
+            title: `Remember: ${truncate(args.text)}`,
+            body: prBody(brain.id, userId, [
+              `Adds one claim to \`${page}\` under **${heading}**.`,
+              args.authority ? `Authority \`${args.authority}\`, verified \`${verifiedAt}\`.` : 'Unmarked, so durable.',
+            ]),
+            apply: (content) =>
+              appendClaim(content, heading, args.text, {
+                authority: args.authority ?? null,
+                verifiedAt,
+              }),
+          },
+          writeIo,
+          `New claim in ${brain.id}.`,
+        );
+        return textResult(outcome.text, outcome.structured);
       } catch (error) {
         return refusal(error);
       }
@@ -96,8 +121,7 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
     'update_fact',
     {
       title: 'Update an existing claim',
-      description:
-        'Propose a replacement for a claim, keeping a supersedes marker back to the old one. Opens a pull request; never merges.',
+      description: `Replace a claim, keeping a supersedes marker back to the old one. ${modeNote}`,
       inputSchema: z.object({
         claim_id: z.string().min(8),
         text: z.string().min(3).optional().describe('New wording. Omit to only refresh the verification date.'),
@@ -108,46 +132,56 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
     handling(async (args, mcp) => {
-      const brain = await requireBrain(workosUserId(mcp.http?.authInfo), args.brain);
+      const userId = workosUserId(mcp.http?.authInfo);
+      const brain = await requireBrain(userId, args.brain);
       const claim = await loadClaim(brain.id, args.claim_id);
       if (!claim) return errorResult(`No claim ${args.claim_id} in ${brain.id}.`);
 
       const newText = args.text ?? claim.text;
 
       try {
-        const result = await openPullRequest(brain, {
-          page: claim.page_path,
-          branchPrefix: 'brain/update',
-          commitMessage: `brain: update a claim in ${claim.page_path}`,
-          title: `Update: ${truncate(newText)}`,
-          body: prBody(brain.id, [
-            `Replaces claim \`${claim.id.slice(0, 12)}\` in \`${claim.page_path}\`.`,
-            '',
-            `Was: ${claim.text}`,
-            `Now: ${newText}`,
-          ]),
-          apply: (content) => {
-            const line = locateClaim(content, claim.text, claim.line);
-            if (line === null) {
-              throw new WriteRefused(
-                `Could not find that claim in ${claim.page_path} on ${brain.default_branch}; the page has changed since it was indexed. Search again and retry.`,
-              );
-            }
-            const existing = readMarker(content, line);
-            return replaceClaim(content, line, newText, {
-              authority: args.authority ?? existing.authority ?? null,
-              verifiedAt: args.verified_at ?? today(),
-              // The old id survives the edit, so provenance is not lost when the
-              // text changes and the new claim gets a different id.
-              supersedes: claim.id.slice(0, 16),
-            });
+        const outcome = await executeWrite(
+          brain,
+          'update_fact',
+          {
+            page: claim.page_path,
+            branchPrefix: 'brain/update',
+            commitMessage: auditCommitMessage(
+              'update_fact',
+              claim.page_path,
+              `Was: ${claim.text}\nNow: ${newText}`,
+              userId,
+            ),
+            title: `Update: ${truncate(newText)}`,
+            body: prBody(brain.id, userId, [
+              `Replaces claim \`${claim.id.slice(0, 12)}\` in \`${claim.page_path}\`.`,
+              '',
+              `Was: ${claim.text}`,
+              `Now: ${newText}`,
+            ]),
+            apply: (content) => {
+              const line = locateClaim(content, claim.text, claim.line);
+              if (line === null) {
+                throw new WriteRefused(
+                  `Could not find that claim in ${claim.page_path} on ${brain.default_branch}; the page has changed since it was indexed. Search again and retry.`,
+                );
+              }
+              const existing = readMarker(content, line);
+              return replaceClaim(content, line, newText, {
+                authority: args.authority ?? existing.authority ?? null,
+                verifiedAt: args.verified_at ?? today(),
+                // The old id survives the edit, so provenance is not lost when the
+                // text changes and the new claim gets a different id.
+                supersedes: claim.id.slice(0, 16),
+              });
+            },
           },
-        });
-        return textResult(pending(result, `Proposed an update to a claim in ${brain.id}.`), {
-          brain: brain.id,
-          pull_request: result,
+          writeIo,
+          `Update a claim in ${brain.id}.`,
+        );
+        return textResult(outcome.text, {
+          ...outcome.structured,
           previous_claim_id: claim.id,
-          recorded: false,
         });
       } catch (error) {
         return refusal(error);
@@ -159,47 +193,54 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
     'forget',
     {
       title: 'Forget a claim',
-      description:
-        'Propose removing a claim from its page. Opens a pull request; never merges, and the received evidence in the sources directory is untouched.',
+      description: `Remove a claim from its page. The sources directory is untouched. ${modeNote}`,
       inputSchema: z.object({
         claim_id: z.string().min(8),
         brain: brainArg,
-        reason: z.string().optional().describe('Why it should go. Shown in the pull request.'),
+        reason: z.string().optional().describe('Why it should go. Shown in the commit or pull request.'),
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
     },
     handling(async (args, mcp) => {
-      const brain = await requireBrain(workosUserId(mcp.http?.authInfo), args.brain);
+      const userId = workosUserId(mcp.http?.authInfo);
+      const brain = await requireBrain(userId, args.brain);
       const claim = await loadClaim(brain.id, args.claim_id);
       if (!claim) return errorResult(`No claim ${args.claim_id} in ${brain.id}.`);
 
       try {
-        const result = await openPullRequest(brain, {
-          page: claim.page_path,
-          branchPrefix: 'brain/forget',
-          commitMessage: `brain: forget a claim in ${claim.page_path}`,
-          title: `Forget: ${truncate(claim.text)}`,
-          body: prBody(brain.id, [
-            `Removes claim \`${claim.id.slice(0, 12)}\` from \`${claim.page_path}\`.`,
-            '',
-            `Claim: ${claim.text}`,
-            args.reason ? `Reason: ${args.reason}` : 'No reason given.',
-          ]),
-          apply: (content) => {
-            const line = locateClaim(content, claim.text, claim.line);
-            if (line === null) {
-              throw new WriteRefused(
-                `Could not find that claim in ${claim.page_path} on ${brain.default_branch}; it may already be gone.`,
-              );
-            }
-            return removeClaim(content, line);
+        const outcome = await executeWrite(
+          brain,
+          'forget',
+          {
+            page: claim.page_path,
+            branchPrefix: 'brain/forget',
+            commitMessage: auditCommitMessage(
+              'forget',
+              claim.page_path,
+              args.reason ? `${claim.text}\n\nReason: ${args.reason}` : claim.text,
+              userId,
+            ),
+            title: `Forget: ${truncate(claim.text)}`,
+            body: prBody(brain.id, userId, [
+              `Removes claim \`${claim.id.slice(0, 12)}\` from \`${claim.page_path}\`.`,
+              '',
+              `Claim: ${claim.text}`,
+              args.reason ? `Reason: ${args.reason}` : 'No reason given.',
+            ]),
+            apply: (content) => {
+              const line = locateClaim(content, claim.text, claim.line);
+              if (line === null) {
+                throw new WriteRefused(
+                  `Could not find that claim in ${claim.page_path} on ${brain.default_branch}; it may already be gone.`,
+                );
+              }
+              return removeClaim(content, line);
+            },
           },
-        });
-        return textResult(pending(result, `Proposed removing a claim from ${brain.id}.`), {
-          brain: brain.id,
-          pull_request: result,
-          recorded: false,
-        });
+          writeIo,
+          `Remove a claim from ${brain.id}.`,
+        );
+        return textResult(outcome.text, outcome.structured);
       } catch (error) {
         return refusal(error);
       }
@@ -207,22 +248,4 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
   );
 
   void ctx;
-}
-
-function refusal(error: unknown) {
-  if (error instanceof WriteRefused) return errorResult(error.message);
-  throw error;
-}
-
-function truncate(text: string, max = 68): string {
-  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
-}
-
-function prBody(brainId: string, lines: string[]): string {
-  return [
-    ...lines,
-    '',
-    '---',
-    `Opened by brain-mcp for the \`${brainId}\` brain. Review and merge; the index rebuilds from the merged commit.`,
-  ].join('\n');
 }

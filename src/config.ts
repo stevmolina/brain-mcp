@@ -26,6 +26,9 @@ export interface Config {
   githubAppId: string;
   githubAppPrivateKey: string;
   githubWebhookSecret: string;
+  /** Optional. Needed only for create_brain's one-time GitHub authorization. */
+  githubAppClientId: string | null;
+  githubAppClientSecret: string | null;
   accessCacheTtlMs: number;
   staleLiveDays: number;
   environment: string;
@@ -55,6 +58,8 @@ export function loadConfig(): Config {
       'base64',
     ).toString('utf8'),
     githubWebhookSecret: required('GITHUB_WEBHOOK_SECRET'),
+    githubAppClientId: process.env.GITHUB_APP_CLIENT_ID || null,
+    githubAppClientSecret: process.env.GITHUB_APP_CLIENT_SECRET || null,
     // Short, so someone removed from a repo loses access without a deploy.
     accessCacheTtlMs: Number(optional('ACCESS_CACHE_TTL_MS', '60000')),
     staleLiveDays: Number(optional('STALE_LIVE_DAYS', '90')),

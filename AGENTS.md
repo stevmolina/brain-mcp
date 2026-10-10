@@ -1,7 +1,7 @@
 # brain-mcp
 
 Remote second brains served over MCP. Any user brings any git repo of markdown and
-registers it as a brain. This is not anyone's brain: Steven's own repo and the
+connects it as a brain. This is not anyone's brain: Steven's own repo and the
 Resorsi client brains are tenants like any other, so the engine carries no client
 names, no fixed page names and no house conventions.
 
@@ -13,9 +13,11 @@ names, no fixed page names and no house conventions.
 2. **The database is always rebuildable from git.** Every row in Neon is derived.
    The test for a new column: if it cannot be regenerated from a commit, it belongs
    in markdown instead, not here.
-3. **Writes only ever produce a pull request.** No merge call belongs in this
-   codebase. Nothing writes to a brain's `sources/`. A new row appears only after
-   the indexer reprocesses the merged commit.
+3. **Writes never merge, and never touch `sources/`.** The default mode opens a
+   pull request. A brain can set an action to commit straight to the default
+   branch, or to refuse the write. No merge call belongs in this codebase. A new
+   row appears only after the indexer reprocesses the commit: the merged one, or
+   the direct one.
 
 ## Shape
 
@@ -26,7 +28,7 @@ INDEXER   src/indexer/        -- parses claims; full rebuild per push, no diffin
      |
 NEON      db/migrations/      -- searchable copy; drop it, rebuild it, lose nothing
      |
-MCP       src/index.ts        -- reads from Neon, writes to git as a branch + PR
+MCP       src/index.ts        -- reads from Neon, writes to git as a commit or a pull request
 ```
 
 The asymmetry is the design: reads come from the copy because it's fast, writes go
@@ -45,6 +47,12 @@ failure demands one; per-brain settings live on the `brains` row.
 An unmarked claim is durable and is never chased. `authority` says whether the line
 is truth or a summary of something else; only a human knows that, which is why it
 is never derived. `supersedes:` and `source:` are also recognised.
+
+Write modes are the other setting that lives on the `brains` row, next to
+`profile`. They are the owner's choice of how this server writes (`auto`,
+`review`, `read_only`, per action), not a fact the repo states. The default is
+`review`. Changing a mode does not open a pull request, so a brain set to
+`read_only` can still be changed by its owner.
 
 Claim id is `sha256(brain_id + page path + normalized text)`, so it is stable
 across reflows and changes when the claim changes.
