@@ -23,6 +23,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY package.json ./
 COPY db ./db
+COPY site ./site
 USER node
 EXPOSE 8080
 ENV PORT=8080 BIND_HOST=0.0.0.0

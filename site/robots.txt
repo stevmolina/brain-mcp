@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /mcp
+Disallow: /healthz
+Disallow: /readyz
+Disallow: /webhooks/
+
+Sitemap: https://brain.mcpbox.dev/sitemap.xml
