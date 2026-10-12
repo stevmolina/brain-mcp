@@ -42,12 +42,33 @@ describe('GET /', () => {
     expect(res.headers.get('content-type')).toMatch(/text\/html/);
     const html = await res.text();
     expect(html).toContain('Agent Brain — Your agents remember.');
-    expect(html).toContain('https://brain.mcpbox.dev/');
+    expect(html).toContain('<link rel="canonical" href="https://brain.mcpbox.dev/">');
     expect(html).toContain('https://computer.mcpbox.dev');
-    expect(html).toContain('https://www.stevmolina.com');
+    expect(html).toContain('https://sessions.mcpbox.dev');
+    expect(html).toContain('href="https://stevmolina.com">Made by');
+    expect(html).toContain('>Agent Computer</a>');
+    expect(html).toContain('>Agent Sessions</a>');
     expect(html).toContain('href="#guide"');
-    expect(html).toContain('SoftwareApplication');
-    expect(html).toContain('Forward Deployed AI Engineer');
+    expect(html).not.toMatch(/\bMCP\b/i);
+
+    const jsonLd = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    expect(jsonLd).not.toBeNull();
+    expect(JSON.parse(jsonLd?.[1] ?? '')).toMatchObject({
+      '@type': 'SoftwareApplication',
+      name: 'Agent Brain',
+      url: 'https://brain.mcpbox.dev/',
+      creator: {
+        '@type': 'Person',
+        name: 'Steven Molina',
+        jobTitle: 'Forward Deployed AI Engineer',
+        url: 'https://stevmolina.com',
+        sameAs: [
+          'https://x.com/stev_molina',
+          'https://www.linkedin.com/in/steven-ml',
+          'https://github.com/stevmolina',
+        ],
+      },
+    });
     expect(html).toContain('$10<span>/mo</span>');
     expect(html).toContain('"price": "10"');
     expect(html).not.toContain('$X');
@@ -65,17 +86,24 @@ describe('GET /', () => {
 
     const robots = await fetch(`${base}/robots.txt`);
     expect(robots.status).toBe(200);
+    expect(robots.headers.get('content-type')).toMatch(/text\/plain/);
     expect(await robots.text()).toContain('Sitemap: https://brain.mcpbox.dev/sitemap.xml');
 
     const sitemap = await fetch(`${base}/sitemap.xml`);
     expect(sitemap.status).toBe(200);
-    expect(await sitemap.text()).toContain('https://brain.mcpbox.dev/');
+    expect(sitemap.headers.get('content-type')).toMatch(/xml/);
+    const sitemapText = await sitemap.text();
+    expect(sitemapText).toContain('<loc>https://brain.mcpbox.dev/</loc>');
 
     const llms = await fetch(`${base}/llms.txt`);
     expect(llms.status).toBe(200);
+    expect(llms.headers.get('content-type')).toMatch(/text\/plain/);
     const llmsText = await llms.text();
     expect(llmsText).toContain('# Agent Brain');
     expect(llmsText).toContain('USD 10/month');
+    expect(llmsText).toContain('Steven Molina, Forward Deployed AI Engineer (https://stevmolina.com)');
+    expect(llmsText).toContain('Agent Computer (https://computer.mcpbox.dev)');
+    expect(llmsText).toContain('Agent Sessions (https://sessions.mcpbox.dev)');
   });
 });
 

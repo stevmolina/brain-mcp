@@ -6,11 +6,16 @@ Agent Brain is a shared memory for a team. Notes live in your own git repo as pl
 
 The Free plan is $0: your notes, any agent, a source on every answer, and your git repo. The Team plan is USD 10/month: shared memory, and a record of who changed what.
 
+Made by Steven Molina, Forward Deployed AI Engineer (https://stevmolina.com).
+
+Sibling products: Agent Computer (https://computer.mcpbox.dev) and Agent Sessions (https://sessions.mcpbox.dev).
+
 ## Links
 
 - [Agent Brain](https://brain.mcpbox.dev/): product home
-- [Computer](https://computer.mcpbox.dev): a computer your AI can use
-- [Steven Molina](https://www.stevmolina.com): Forward Deployed AI Engineer
+- [Agent Computer](https://computer.mcpbox.dev): a computer your AI can use
+- [Agent Sessions](https://sessions.mcpbox.dev): one memory for every coding agent
+- [Steven Molina](https://stevmolina.com): Forward Deployed AI Engineer
 
 ## Connect
 
