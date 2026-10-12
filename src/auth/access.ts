@@ -64,41 +64,72 @@ export async function githubLoginForWorkosUser(workosUserId: string): Promise<st
   return writeCache(identityCache, workosUserId, login, 15 * 60_000);
 }
 
-/** Does this GitHub login have read access to the brain's repo? */
-export async function canReadBrain(brain: BrainRow, githubLogin: string | null): Promise<boolean> {
-  if (!githubLogin) return false;
-  if (githubLogin.toLowerCase() === brain.owner_github_login.toLowerCase()) return true;
-  if (!brain.installation_id) return false;
-
-  const key = `${brain.id}::${githubLogin.toLowerCase()}`;
-  const cached = readCache(accessCache, key);
+async function collaboratorHasAccess(
+  cacheKey: string,
+  installationId: string | number,
+  owner: string,
+  repo: string,
+  githubLogin: string,
+): Promise<boolean> {
+  const cached = readCache(accessCache, cacheKey);
   if (cached !== undefined) return cached;
 
   const ttl = loadConfig().accessCacheTtlMs;
   try {
-    const octokit = await installationOctokit(brain.installation_id);
+    const octokit = await installationOctokit(installationId);
     const response = await octokit.request('GET /repos/{owner}/{repo}/collaborators/{username}', {
-      owner: brain.repo_owner,
-      repo: brain.repo_name,
+      owner,
+      repo,
       username: githubLogin,
     });
-    return writeCache(accessCache, key, response.status === 204, ttl);
+    return writeCache(accessCache, cacheKey, response.status === 204, ttl);
   } catch (error) {
     const status = (error as { status?: number }).status;
-    if (status === 404) return writeCache(accessCache, key, false, ttl);
+    if (status === 404) return writeCache(accessCache, cacheKey, false, ttl);
     // A 403 means the App cannot answer the question, not that access exists.
     // Fail closed and say so in the log rather than guessing.
     console.error(
       JSON.stringify({
         level: 'warn',
-        at: 'access.canReadBrain',
-        brain: brain.id,
+        at: 'access.collaborator',
+        repo: `${owner}/${repo}`,
         status,
         message: 'collaborator check failed; denying',
       }),
     );
-    return writeCache(accessCache, key, false, 10_000);
+    return writeCache(accessCache, cacheKey, false, 10_000);
   }
+}
+
+/** Does this GitHub login have read access to the brain's repo? */
+export async function canReadBrain(brain: BrainRow, githubLogin: string | null): Promise<boolean> {
+  if (!githubLogin) return false;
+  if (githubLogin.toLowerCase() === brain.owner_github_login.toLowerCase()) return true;
+  if (!brain.installation_id) return false;
+  return collaboratorHasAccess(
+    `${brain.id}::${githubLogin.toLowerCase()}`,
+    brain.installation_id,
+    brain.repo_owner,
+    brain.repo_name,
+    githubLogin,
+  );
+}
+
+/** Same check before a repo is a brain, used while connecting one. */
+export async function canReadRepo(
+  installationId: number,
+  owner: string,
+  repo: string,
+  githubLogin: string,
+): Promise<boolean> {
+  if (githubLogin.toLowerCase() === owner.toLowerCase()) return true;
+  return collaboratorHasAccess(
+    `repo:${owner}/${repo}::${githubLogin.toLowerCase()}`,
+    installationId,
+    owner,
+    repo,
+    githubLogin,
+  );
 }
 
 export async function getBrain(brainId: string): Promise<BrainRow | null> {
@@ -140,7 +171,7 @@ export async function requireBrain(workosUserId: string, requested?: string): Pr
   if (brains.length === 1) return brains[0]!;
   if (brains.length === 0) {
     throw new Forbidden(
-      'You have no brains yet. Install the GitHub App on a markdown repo and register it as a brain.',
+      'You have no brain yet. Use list_connectable_repos to see GitHub repos you can connect, connect_brain to connect one, or create_brain to create a private repo.',
     );
   }
   throw new Forbidden(

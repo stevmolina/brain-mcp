@@ -7,6 +7,8 @@ export interface BrainRow {
   default_branch: string;
   installation_id: string | null;
   profile: unknown;
+  /** Per-action write policy. Empty or absent means review for every action. */
+  write_modes: unknown;
   last_indexed_commit: string | null;
   last_indexed_at: Date | null;
 }

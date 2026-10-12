@@ -7,7 +7,7 @@
  *          |
  *     NEON                          -- searchable copy; drop it, rebuild it, lose nothing
  *          |
- *     MCP SERVER                    -- reads from Neon, writes to git as a branch + PR
+ *     MCP SERVER                    -- reads from Neon, writes to git as a commit or a pull request
  *
  * Reads come from the copy because it's fast. Writes go to the truth because
  * it's reviewable.
@@ -27,6 +27,8 @@ import { loadConfig } from './config.js';
 import { authorizationServerMetadata, createTokenVerifier } from './auth/workos.js';
 import { Forbidden } from './auth/access.js';
 import { handleGithubWebhook } from './github/webhook.js';
+import { finishCreateFromCallback } from './onboarding/flow.js';
+import { createOnboardingHost } from './onboarding/github.js';
 import { buildServer } from './tools/index.js';
 import { db } from './db/client.js';
 
@@ -74,6 +76,29 @@ export async function createApp(): Promise<express.Express> {
   );
 
   app.use(express.json({ limit: '4mb' }));
+
+  // Browser redirect from GitHub after create_brain. No bearer token: the signed
+  // state is the credential, and it only authorizes creating that one repo.
+  app.get('/oauth/github/callback', (req, res) => {
+    finishCreateFromCallback(
+      {
+        code: firstQuery(req.query.code),
+        state: firstQuery(req.query.state),
+        error: firstQuery(req.query.error),
+        error_description: firstQuery(req.query.error_description),
+      },
+      createOnboardingHost(),
+    )
+      .then((result) => {
+        res.status(result.status).type('html').send(result.html);
+      })
+      .catch((error) => {
+        console.error(JSON.stringify({ level: 'error', at: 'onboarding.callback', message: String(error) }));
+        if (!res.headersSent) {
+          res.status(500).type('html').send('<!doctype html><title>Error</title><p>Could not finish creating the brain.</p>');
+        }
+      });
+  });
 
   // Liveness only. The container health check calls this every 30s, and a
   // database query here kept Neon's compute from ever suspending, which spent
@@ -151,6 +176,12 @@ export async function createApp(): Promise<express.Express> {
   });
 
   return app;
+}
+
+function firstQuery(value: unknown): string | undefined {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+  return undefined;
 }
 
 const startedDirectly = process.argv[1]?.endsWith('index.js') || process.argv[1]?.endsWith('index.ts');
