@@ -1,0 +1,19 @@
+# Agent Brain
+
+> Write a note once. Claude, Cursor and every chat answer from it, and show the source.
+
+Agent Brain is a shared memory for a team. Notes live in your own git repo as plain markdown. Every chat answers from those notes and shows the source file. Edit a note once and every agent uses the new version.
+
+The Free plan is $0: your notes, any agent, a source on every answer, and your git repo. The Team plan (shared memory, and a record of who changed what) does not have a published price yet.
+
+## Links
+
+- [Agent Brain](https://brain.mcpbox.dev/): product home
+- [Computer](https://computer.mcpbox.dev): a computer your AI can use
+- [Steven Molina](https://www.stevmolina.com): Forward Deployed AI Engineer
+
+## Connect
+
+There is no separate guide yet. On the home page, Guide jumps to the "Connect your agents" step.
+
+Server address: https://brain.mcpbox.dev/mcp

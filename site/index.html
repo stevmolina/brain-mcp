@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Brain — Your agents remember.</title>
+  <meta name="description" content="Write a note once. Claude, Cursor and every chat answer from it, and show the source. One memory for the whole team, kept in your git repo.">
+  <link rel="canonical" href="https://brain.mcpbox.dev/">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Agent Brain">
+  <meta property="og:url" content="https://brain.mcpbox.dev/">
+  <meta property="og:title" content="Agent Brain — Your agents remember.">
+  <meta property="og:description" content="Write a note once. Claude, Cursor and every chat answer from it, and show the source. One memory for the whole team, kept in your git repo.">
+  <meta property="og:image" content="https://brain.mcpbox.dev/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Agent Brain: your agents remember a note, and every chat shows the same answer with its source.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Agent Brain — Your agents remember.">
+  <meta name="twitter:description" content="Write a note once. Claude, Cursor and every chat answer from it, and show the source. One memory for the whole team, kept in your git repo.">
+  <meta name="twitter:image" content="https://brain.mcpbox.dev/og.png">
+  <meta name="twitter:image:alt" content="Agent Brain: your agents remember a note, and every chat shows the same answer with its source.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Agent Brain",
+    "url": "https://brain.mcpbox.dev/",
+    "description": "Write a note once. Claude, Cursor and every chat answer from it, and show the source. One memory for the whole team, kept in your git repo.",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "creator": {
+      "@type": "Person",
+      "name": "Steven Molina",
+      "url": "https://www.stevmolina.com",
+      "jobTitle": "Forward Deployed AI Engineer"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div class="sheet">
+    <header id="nav">
+      <a class="logo" href="/">
+        <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C13 8 16 11 24 12 16 13 13 16 12 24 11 16 8 13 0 12 8 11 11 8 12 0Z" fill="#111"/></svg>
+        Agent Brain
+      </a>
+      <nav class="r" aria-label="Primary">
+        <a href="#how">How it works</a>
+        <a href="#teams">For teams</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#guide">Guide</a>
+        <a href="https://computer.mcpbox.dev">Computer</a>
+        <a class="opill" href="#how">Get started</a>
+      </nav>
+    </header>
+
+    <main>
+      <section id="hero">
+        <svg class="pin deco note-arrow" width="60" height="50" aria-hidden="true"><path d="M55 20 C40 5,15 10,30 30 C40 42,20 45,8 32" stroke="#111" stroke-width="2.5" fill="none"/><path d="M8 32 l2 -10 M8 32 l10 -1" stroke="#111" stroke-width="2.5"/></svg>
+        <span class="hw pk pin note-label">your team's notes</span>
+        <h1 class="pin hero-title">Your agents<br><span class="hl">remember.</span></h1>
+        <p class="pin hero-sub">Write a note once. Claude, Cursor and every chat answer from it, and show the source.</p>
+        <div class="pin cta-wrap"><a class="cta" href="#how">Get started</a></div>
+        <span class="hw yl pin free-tag">free to try ✦</span>
+        <div class="sticky st-y pin sticky-price"><small>pricing.md</small>pricing: per seat,<br>$12 / month</div>
+        <div class="sticky st-b pin sticky-launch"><small>decisions.md</small>launch: Nov 4<br>owner: Leo</div>
+        <svg class="pin deco hero-curve" width="160" height="260" aria-hidden="true"><path d="M10 250 C70 250,90 180,70 120 C55 70,100 30,150 30" stroke="#111" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M150 30 l-14 -8 M150 30 l-10 12" stroke="#111" stroke-width="3" stroke-linecap="round"/></svg>
+        <div class="card pin hero-card">
+          <span class="hw pk synced">synced</span>
+          <div class="msg ask">How do we price the team plan?</div>
+          <div class="msg"><div class="who">Claude</div>Per seat, $12 a month.<br><span class="chip pk">source: pricing.md</span></div>
+          <div class="msg"><div class="who">Cursor</div>Using per-seat pricing ($12/mo) from your notes.<br><span class="chip yl">source: pricing.md</span></div>
+        </div>
+        <span class="hw bl pin same-label">same answer, everywhere</span>
+        <div class="pin hero-pills">
+          <span class="pill pill-chat">any chat</span>
+          <span class="pill pill-git">git repo</span>
+          <svg class="pill-arrow" width="24" height="24" aria-hidden="true"><path d="M2 2 L20 10 L11 12 L8 21Z" fill="#F06BC4"/></svg>
+        </div>
+      </section>
+
+      <section id="problem" class="sec">
+        <span class="hw pk lbl">the problem</span>
+        <h2>Same questions. <span class="hl">Every day.</span></h2>
+        <div class="sticky st-y x pin mon"><small>monday</small><span>explain pricing again</span></div>
+        <div class="sticky st-b x pin tue"><small>tuesday</small><span>paste the spec again</span></div>
+        <div class="sticky st-p x pin wed"><small>wednesday</small><span>which version is right?</span></div>
+        <span class="hw yl pin zero">Every agent starts from zero.</span>
+      </section>
+
+      <section id="how" class="sec">
+        <span class="hw bl lbl">how it works</span>
+        <h2>Three steps. <span class="hl">That's it.</span></h2>
+        <div class="steps">
+          <div class="card step">
+            <span class="num">1</span>
+            <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 40 L12 28 L34 6 L42 14 L20 36 Z M30 10 L38 18" stroke="#111" stroke-width="3" fill="var(--yl)" stroke-linejoin="round"/></svg>
+            <h3>Write it down</h3>
+            <div class="md"># pricing<br>- per seat<br>- $12 / month<br>- annual: 2 months free</div>
+          </div>
+          <div class="card step" id="guide">
+            <span class="num">2</span>
+            <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><path d="M18 30 L30 18 M14 24 l-6 6 a6 6 0 0 0 10 10 l6 -6 M34 24 l6 -6 a6 6 0 0 0 -10 -10 l-6 6" stroke="#111" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+            <h3>Connect your agents</h3>
+            <div class="agents">
+              <span class="hw pk tilt-l">Claude</span>
+              <span class="hw yl tilt-r">Cursor</span>
+              <span class="hw bl tilt-s">any chat</span>
+            </div>
+            <p class="one-click">One click each.</p>
+          </div>
+          <div class="card step">
+            <span class="num">3</span>
+            <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 6 C14 6 8 13 8 21 c0 6 4 9 6 12 v5 h20 v-5 c2-3 6-6 6-12 C40 13 34 6 24 6Z M18 42 h12" stroke="#111" stroke-width="3" fill="var(--pk)" stroke-linejoin="round"/></svg>
+            <h3>They remember</h3>
+            <div class="msg"><div class="who">Claude</div>Per seat, $12 a month.<br><span class="chip pk">source: pricing.md</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="same" class="sec">
+        <span class="hw yl lbl">any agent</span>
+        <h2>Same note. <span class="hl">Same answer.</span></h2>
+        <div class="sticky st-y pin same-note"><small>pricing.md</small>pricing: per seat,<br>$12 / month</div>
+        <svg class="pin deco same-arrows" width="1440" height="820" aria-hidden="true">
+          <g stroke="#111" stroke-width="3" fill="none" stroke-linecap="round">
+            <path d="M600 420 C500 430,420 470,390 560"/><path d="M390 560 l-2 -16 M390 560 l12 -10"/>
+            <path d="M730 480 C740 520,720 550,730 590"/><path d="M730 590 l-9 -13 M730 590 l9 -13"/>
+            <path d="M870 420 C960 430,1040 470,1070 560"/><path d="M1070 560 l2 -16 M1070 560 l-12 -10"/>
+          </g>
+        </svg>
+        <div class="card pin ans ans-claude"><div class="who">Claude</div><div class="msg">It's per seat, $12/mo.<br><span class="chip pk">source: pricing.md</span></div></div>
+        <div class="card pin ans ans-cursor"><div class="who">Cursor</div><div class="msg mono">PRICE_PER_SEAT = 12<br><span class="chip yl" style="font-family:Inter,system-ui,sans-serif">source: pricing.md</span></div></div>
+        <div class="card pin ans ans-chat"><div class="who">Chat</div><div class="msg">$12 per seat, monthly.<br><span class="chip bl">source: pricing.md</span></div></div>
+        <span class="hw pk pin edit-once">edit once → all update</span>
+      </section>
+
+      <section id="teams" class="sec">
+        <span class="hw pk lbl teams-lbl">For teams</span>
+        <p class="intro">One memory for the whole team.</p>
+        <svg class="teams-arrow" width="40" height="50" aria-hidden="true"><path d="M5 5 C30 10,30 30,10 30 C0 30,10 15,25 45" stroke="#111" stroke-width="2.5" fill="none"/><path d="M25 45 l-10 -4 M25 45 l2 -10" stroke="#111" stroke-width="2.5"/></svg>
+        <div class="grid">
+          <div class="card tc">
+            <div class="prev prev-specs"># specs/checkout.md<br>- guest checkout: yes<br>- max 10 items</div>
+            <div class="foot"><h4>Product specs</h4><span class="pill pill-specs">Specs</span></div>
+            <div class="cur cur-ana"><svg width="22" height="22" aria-hidden="true"><path d="M2 2 L20 10 L11 12 L8 21Z" fill="#F06BC4"/></svg><b class="tag-ana">Ana</b></div>
+          </div>
+          <div class="card tc">
+            <div class="prev prev-price"># pricing.md<br>- per seat, $12/mo<br>- refunds: 30 days</div>
+            <div class="foot"><h4>Pricing &amp; policy</h4><span class="pill pill-policy">Policy</span></div>
+            <div class="cur cur-leo"><svg width="22" height="22" aria-hidden="true"><path d="M2 2 L20 10 L11 12 L8 21Z" fill="#4FA8E8"/></svg><b class="tag-leo">Leo</b></div>
+          </div>
+          <div class="card tc">
+            <div class="prev prev-dec"># decisions.md<br>- Oct 2: drop free tier limit<br>- Oct 9: launch Nov 4</div>
+            <div class="foot"><h4>Decisions log</h4><span class="pill pill-dec">Decisions</span></div>
+            <div class="cur cur-mia"><svg width="22" height="22" aria-hidden="true"><path d="M2 2 L20 10 L11 12 L8 21Z" fill="#D9A92B"/></svg><b class="tag-mia">Mia</b></div>
+          </div>
+          <div class="card tc">
+            <div class="prev prev-on"># onboarding.md<br>- day 1: repo + access<br>- ask the agent first</div>
+            <div class="foot"><h4>Onboarding</h4><span class="pill pill-on">Onboarding</span></div>
+            <div class="cur cur-sam"><svg width="22" height="22" aria-hidden="true"><path d="M2 2 L20 10 L11 12 L8 21Z" fill="#4CC46A"/></svg><b class="tag-sam">Sam</b></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="repo" class="sec">
+        <span class="hw bl lbl">lives in your git repo</span>
+        <div class="page">
+          <svg width="170" height="140" viewBox="0 0 170 140" aria-hidden="true"><path d="M10 30 h55 l14 16 h80 v84 h-149 Z" fill="var(--yl)" stroke="#111" stroke-width="3.5" stroke-linejoin="round"/><path d="M10 56 h149" stroke="#111" stroke-width="3"/></svg>
+          <div>
+            <h2>Plain files. <span class="hl">You own it.</span></h2>
+            <div class="tree">notes/<br>├─ pricing.md<br>└─ decisions.md</div>
+            <p class="own">Versioned, reviewable, no lock-in.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="pricing" class="sec">
+        <span class="hw yl lbl">pricing</span>
+        <h2>Simple. <span class="hl">Start free.</span></h2>
+        <div class="plans">
+          <div class="plan plan-free">
+            <h3>Free</h3>
+            <div class="p">$0</div>
+            <ul>
+              <li>✓ Your notes, any agent</li>
+              <li>✓ Sources on every answer</li>
+              <li>✓ Your git repo</li>
+            </ul>
+            <a class="cta tight" href="#how">Get started</a>
+          </div>
+          <div class="plan plan-team">
+            <h3>Team</h3>
+            <div class="p">$X<span>/mo</span></div>
+            <ul>
+              <li>✓ Everything in Free</li>
+              <li>✓ Shared team memory</li>
+              <li>✓ Who changed what</li>
+            </ul>
+            <a class="cta tight pink" href="#how">Get started</a>
+            <span class="hw pk pin price-tbd">price TBD</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" class="sec">
+        <span class="hw pk lbl">questions</span>
+        <div class="lined">
+          <div class="qa">
+            <b>Q: Which agents work with it?</b>
+            <p>A: Claude, Cursor and any chat that can connect.</p>
+            <b>Q: Where do my notes live?</b>
+            <p>A: In your own git repo, as plain markdown.</p>
+            <b>Q: How do I know where an answer came from?</b>
+            <p>A: Every answer shows its source note.</p>
+            <b>Q: What if a note changes?</b>
+            <p>A: Every agent uses the new version right away.</p>
+            <b>Q: Can my whole team use it?</b>
+            <p>A: Yes. Everyone shares the same memory.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="final">
+        <h2 class="pin final-title">Give your agents<br><span class="hl">a memory.</span></h2>
+        <svg class="pin deco final-arrow" width="160" height="120" aria-hidden="true"><path d="M10 20 C60 0,120 30,140 90" stroke="#111" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M140 90 l-14 -6 M140 90 l4 -15" stroke="#111" stroke-width="3" stroke-linecap="round"/></svg>
+        <div class="sticky st-y pin final-note">
+          <small>brain.mcpbox.dev</small>
+          <a class="cta tight" href="#how">Get started →</a>
+        </div>
+        <span class="hw pk pin final-free">free to try · takes a minute</span>
+      </section>
+    </main>
+
+    <footer>
+      <a class="logo" href="/">
+        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C13 8 16 11 24 12 16 13 13 16 12 24 11 16 8 13 0 12 8 11 11 8 12 0Z" fill="#111"/></svg>
+        Agent Brain
+      </a>
+      <nav class="l" aria-label="Footer">
+        <a href="#how">How it works</a>
+        <a href="#teams">For teams</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#guide">Guide</a>
+        <a href="https://computer.mcpbox.dev">Computer</a>
+      </nav>
+      <a class="sig" href="https://www.stevmolina.com">made by <span class="pk">Steven Molina</span> ✎</a>
+    </footer>
+  </div>
+</body>
+</html>

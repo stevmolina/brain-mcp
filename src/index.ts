@@ -12,6 +12,9 @@
  * Reads come from the copy because it's fast. Writes go to the truth because
  * it's reviewable.
  */
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import {
   getOAuthProtectedResourceMetadataUrl,
@@ -28,6 +31,23 @@ import { buildServer } from './tools/index.js';
 import { db } from './db/client.js';
 
 const VERSION = '0.1.0';
+
+/**
+ * Plain HTML/CSS landing. Dev runs from src/ (../site). The image runs from
+ * dist/src (../../site). `pnpm test` and Docker both start with cwd at the
+ * package root, which is the last candidate.
+ */
+function landingRoot(): string {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    path.resolve(here, '../site'),
+    path.resolve(here, '../../site'),
+    path.resolve(process.cwd(), 'site'),
+  ];
+  const found = candidates.find((dir) => existsSync(path.join(dir, 'index.html')));
+  if (!found) throw new Error(`Landing site not found. Looked in ${candidates.join(', ')}`);
+  return found;
+}
 
 export async function createApp(): Promise<express.Express> {
   const config = loadConfig();
@@ -109,6 +129,20 @@ export async function createApp(): Promise<express.Express> {
   app.get(resourceUrl.pathname, bearer, (_req, res) => {
     res.status(405).json({ error: 'Streamable HTTP: POST to this endpoint' });
   });
+
+  // After every API and discovery route, so a file in site/ cannot shadow
+  // /mcp, /healthz, /readyz, /webhooks/github, or the OAuth documents.
+  // Unknown paths still fall through to Express's own 404.
+  app.get('/index.html', (_req, res) => {
+    res.redirect(301, '/');
+  });
+  app.use(
+    express.static(landingRoot(), {
+      index: 'index.html',
+      fallthrough: true,
+      redirect: false,
+    }),
+  );
 
   app.use((error: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const status = error instanceof Forbidden ? 403 : 500;
