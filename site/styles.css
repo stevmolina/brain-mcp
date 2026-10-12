@@ -385,7 +385,6 @@ section.sec { padding-top: 110px; padding-bottom: 40px; }
 .plan ul { list-style: none; padding: 0; font-size: 18px; line-height: 34px; margin: 14px 0 26px; }
 .plan-free { transform: rotate(-2deg); }
 .plan-team { transform: rotate(2deg); background-color: #fff4f9; }
-.price-tbd { right: -40px; top: 20px; left: auto; transform: rotate(8deg); font-size: 22px; }
 
 .lined {
   width: 1000px;
@@ -505,7 +504,6 @@ footer .l a:hover { text-decoration: underline; text-underline-offset: 4px; }
   .plans { flex-direction: column; gap: 36px; margin: 28px 0 8px; }
   .plan { width: 100%; }
   .plan-free, .plan-team { transform: none; }
-  .price-tbd { right: 12px; top: -16px; }
 
   .lined { width: 100%; padding: 16px 16px 16px 28px; }
   .lined::before { left: 14px; }
