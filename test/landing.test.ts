@@ -48,8 +48,10 @@ describe('GET /', () => {
     expect(html).toContain('href="#guide"');
     expect(html).toContain('SoftwareApplication');
     expect(html).toContain('Forward Deployed AI Engineer');
-    expect(html).toContain('$X');
-    expect(html).toContain('price TBD');
+    expect(html).toContain('$10<span>/mo</span>');
+    expect(html).toContain('"price": "10"');
+    expect(html).not.toContain('$X');
+    expect(html).not.toContain('price TBD');
     expect(html).not.toContain('answers need review');
     expect(html).not.toContain('Cannot GET');
   });
@@ -71,7 +73,9 @@ describe('GET /', () => {
 
     const llms = await fetch(`${base}/llms.txt`);
     expect(llms.status).toBe(200);
-    expect(await llms.text()).toContain('# Agent Brain');
+    const llmsText = await llms.text();
+    expect(llmsText).toContain('# Agent Brain');
+    expect(llmsText).toContain('USD 10/month');
   });
 });
 

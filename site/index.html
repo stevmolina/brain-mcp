@@ -35,11 +35,20 @@
     "description": "Write a note once. Claude, Cursor and every chat answer from it, and show the source. One memory for the whole team, kept in your git repo.",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
+    "offers": [
+      {
+        "@type": "Offer",
+        "name": "Free",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      {
+        "@type": "Offer",
+        "name": "Team",
+        "price": "10",
+        "priceCurrency": "USD"
+      }
+    ],
     "creator": {
       "@type": "Person",
       "name": "Steven Molina",
@@ -203,14 +212,13 @@
           </div>
           <div class="plan plan-team">
             <h3>Team</h3>
-            <div class="p">$X<span>/mo</span></div>
+            <div class="p">$10<span>/mo</span></div>
             <ul>
               <li>✓ Everything in Free</li>
               <li>✓ Shared team memory</li>
               <li>✓ Who changed what</li>
             </ul>
             <a class="cta tight pink" href="#how">Get started</a>
-            <span class="hw pk pin price-tbd">price TBD</span>
           </div>
         </div>
       </section>
