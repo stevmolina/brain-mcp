@@ -48,7 +48,7 @@ is never derived. `supersedes:` and `source:` are also recognised.
 
 Each body row of a markdown table is a claim too, with the header cells paired to
 the row cells (`Date: 2026-09-08; Status: Active; Decision: ...`). A marker in any
-cell of the row works the same way. `update_claim` and `forget_claim` only edit list
+cell of the row works the same way. `update_fact` and `forget` only edit list
 items, so they refuse a table-row claim.
 
 Claim id is `sha256(brain_id + page path + normalized text)`, so it is stable
