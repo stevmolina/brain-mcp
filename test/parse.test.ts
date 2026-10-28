@@ -134,3 +134,125 @@ describe('supersession markers', () => {
     expect(claim?.supersedes).toEqual(['aaaaaaaa', 'bbbbbbbb']);
   });
 });
+
+describe('table rows', () => {
+  const ledger = [
+    '## Decisions',
+    '',
+    '| Date | Status | Decision |',
+    '|------|:------:|----------|',
+    '| 2026-09-08 | Active | Invoice weekly. |',
+    '| 2026-09-15 | Dropped | Skip the pilot. |',
+    '',
+    '- A list item after the table.',
+  ].join('\n');
+
+  it('turns each body row into one claim, header paired with cells', () => {
+    const claims = parse(ledger);
+    expect(claims.map((c) => c.text)).toEqual([
+      'Date: 2026-09-08; Status: Active; Decision: Invoice weekly.',
+      'Date: 2026-09-15; Status: Dropped; Decision: Skip the pilot.',
+      'A list item after the table.',
+    ]);
+  });
+
+  it('skips the header and separator, and records heading and line', () => {
+    const claims = parse(ledger);
+    expect(claims[0]?.line).toBe(5);
+    expect(claims[1]?.line).toBe(6);
+    expect(claims[0]?.heading).toBe('Decisions');
+    expect(claims.some((c) => c.text.includes('---') || c.text === 'Date: Date')).toBe(false);
+  });
+
+  it('works without outer pipes', () => {
+    const claims = parse(['Owner | Task', '--- | ---', 'Ana | Ship the form'].join('\n'));
+    expect(claims.map((c) => c.text)).toEqual(['Owner: Ana; Task: Ship the form']);
+  });
+
+  it('leaves out empty cells', () => {
+    const [claim] = parse(['| Name | Note | Owner |', '|---|---|---|', '| Plan B | | Ana |'].join('\n'));
+    expect(claim?.text).toBe('Name: Plan B; Owner: Ana');
+  });
+
+  it('keeps an escaped pipe inside a cell', () => {
+    const [claim] = parse(['| Term | Meaning |', '|---|---|', '| a\\|b | either one |'].join('\n'));
+    expect(claim?.text).toBe('Term: a|b; Meaning: either one');
+  });
+
+  it('falls back to the raw cells when the column counts differ', () => {
+    const [claim] = parse(['| A | B |', '|---|---|', '| one | two | three |'].join('\n'));
+    expect(claim?.text).toBe('one | two | three');
+  });
+
+  it('falls back to the raw cells when the header cells are all empty', () => {
+    const [claim] = parse(['| | |', '|---|---|', '| left | right |'].join('\n'));
+    expect(claim?.text).toBe('left | right');
+  });
+
+  it('ignores tables inside fenced code', () => {
+    const claims = parse(['```md', '| A | B |', '|---|---|', '| 1 | 2 |', '```'].join('\n'));
+    expect(claims).toEqual([]);
+  });
+
+  it('does not treat a lone pipe line as a table', () => {
+    expect(parse('a | b\nplain prose')).toEqual([]);
+  });
+
+  it('parses a marker in a cell like a list-item marker and strips it', () => {
+    const [claim] = parse(
+      [
+        '| Item | State |',
+        '|---|---|',
+        '| Hosting | Live <!-- authority: live | verified_at: 2026-08-19 | supersedes: abc12345 --> |',
+      ].join('\n'),
+    );
+    expect(claim?.text).toBe('Item: Hosting; State: Live');
+    expect(claim?.authority).toBe('live');
+    expect(claim?.verifiedAt).toBe('2026-08-19');
+    expect(claim?.supersedes).toEqual(['abc12345']);
+    expect(claim?.id).toBe(claimId('test/brain', 'wiki/scope.md', 'Item: Hosting; State: Live'));
+  });
+
+  it('reads a marker that sits in its own trailing column', () => {
+    const [claim] = parse(
+      ['| Item | State |', '|---|---|', '| Hosting | Live | <!-- authority: derived --> |'].join('\n'),
+    );
+    expect(claim?.text).toBe('Item: Hosting; State: Live');
+    expect(claim?.authority).toBe('derived');
+  });
+
+  it('turns links under the sources dir into provenance edges', () => {
+    const [claim] = parse(
+      [
+        '| Fact | Evidence |',
+        '|---|---|',
+        '| Rate is fixed | [contract](../sources/raw/contract.pdf) and [site](https://example.com/x) |',
+      ].join('\n'),
+    );
+    expect(claim?.sourcePaths).toEqual(['sources/raw/contract.pdf']);
+  });
+
+  it('reads a source marker path from the repo root', () => {
+    const [claim] = parse(
+      ['| Fact | Note |', '|---|---|', '| Rate is fixed | ok <!-- source: sources/raw/a.pdf --> |'].join('\n'),
+    );
+    expect(claim?.sourcePaths).toEqual(['sources/raw/a.pdf']);
+  });
+
+  it('keeps ids stable and unique per row, and leaves list-item ids alone', () => {
+    const claims = parse(ledger);
+    expect(claims[0]?.id).toBe(
+      claimId('test/brain', 'wiki/scope.md', 'Date: 2026-09-08; Status: Active; Decision: Invoice weekly.'),
+    );
+    expect(new Set(claims.map((c) => c.id)).size).toBe(claims.length);
+    expect(claims[2]?.id).toBe(claimId('test/brain', 'wiki/scope.md', 'A list item after the table.'));
+  });
+
+  it('ends the table at a heading or blank line and resumes list parsing', () => {
+    const claims = parse(['| A | B |', '|---|---|', '| 1 | 2 |', '# Next', '- bullet'].join('\n'));
+    expect(claims.map((c) => [c.text, c.heading])).toEqual([
+      ['A: 1; B: 2', null],
+      ['bullet', 'Next'],
+    ]);
+  });
+});
