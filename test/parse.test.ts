@@ -255,4 +255,19 @@ describe('table rows', () => {
       ['bullet', 'Next'],
     ]);
   });
+
+  it('leaves a table indented under a list item as part of that item', () => {
+    const claims = parse(['- Pricing tiers:', '  | Tier | Price |', '  |------|-------|', '  | A | 10 |', '  Agreed.'].join('\n'));
+    expect(claims.map((c) => c.text)).toEqual(['Pricing tiers: | Tier | Price | |------|-------| | A | 10 | Agreed.']);
+  });
+
+  it('ends the table at a list item, even one with a pipe', () => {
+    const claims = parse(['| A | B |', '|---|---|', '| 1 | 2 |', '- item with a | pipe'].join('\n'));
+    expect(claims.map((c) => c.text)).toEqual(['A: 1; B: 2', 'item with a | pipe']);
+  });
+
+  it('ignores a repeated separator row', () => {
+    const claims = parse(['| A | B |', '|---|---|', '|---|---|', '| 1 | 2 |'].join('\n'));
+    expect(claims.map((c) => c.text)).toEqual(['A: 1; B: 2']);
+  });
 });

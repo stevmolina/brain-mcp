@@ -246,7 +246,10 @@ export function parsePage(options: ParsePageOptions): ParsedClaim[] {
     }
 
     // A table is a header row, then a separator row with the same cell count.
-    if (!LIST_ITEM.test(line) && line.includes('|') && i + 1 < lines.length) {
+    // A line indented under an open list item is that item's continuation, so
+    // it stays part of the item exactly as before.
+    const continuesItem = open !== null && line.trim() !== '' && line.search(/\S/) > open.indent;
+    if (!continuesItem && !LIST_ITEM.test(line) && line.includes('|') && i + 1 < lines.length) {
       const headerCells = splitCells(line);
       if (isTableSeparator(lines[i + 1]!, headerCells.length)) {
         flush();
@@ -254,7 +257,8 @@ export function parsePage(options: ParsePageOptions): ParsedClaim[] {
         let j = i + 2;
         for (; j < lines.length; j++) {
           const row = lines[j]!;
-          if (row.trim() === '' || !row.includes('|') || FENCE.test(row) || HEADING.test(row)) break;
+          if (row.trim() === '' || !row.includes('|') || FENCE.test(row) || HEADING.test(row) || LIST_ITEM.test(row)) break;
+          if (isTableSeparator(row, headerCells.length)) continue;
           emit(row, rowText(headerCells, row), j + 1, where);
         }
         i = j - 1;
