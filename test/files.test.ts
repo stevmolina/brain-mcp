@@ -210,10 +210,12 @@ describe('add_file is add-only', () => {
     const result = await files.add(A, 'inputs/big.zip');
     expect(result.status).toBe('upload_url');
     if (result.status !== 'upload_url') return;
-    expect(result.required_headers).toEqual({ 'If-None-Match': '*' });
+    expect(result.required_headers).toEqual({ 'Content-Type': 'application/zip', 'If-None-Match': '*' });
     const url = new URL(result.upload_url);
     expect(decodeURIComponent(url.pathname)).toContain(`${A}/inputs/big.zip`);
-    expect(url.searchParams.get('X-Amz-SignedHeaders')!.split(';')).toContain('if-none-match');
+    expect(url.searchParams.get('X-Amz-SignedHeaders')!.split(';')).toEqual(
+      expect.arrayContaining(['content-type', 'if-none-match']),
+    );
     expect(url.searchParams.get('X-Amz-Expires')).toBe('900');
     // Presigning is local: nothing was written.
     expect(s3.commandCalls(PutObjectCommand)).toHaveLength(0);

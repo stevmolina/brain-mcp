@@ -73,9 +73,6 @@ export async function createApp(): Promise<express.Express> {
     },
   );
 
-  // add_file takes up to about 10 MB as base64, which is a third bigger again.
-  app.use(express.json({ limit: '16mb' }));
-
   // Liveness only. The container health check calls this every 30s, and a
   // database query here kept Neon's compute from ever suspending, which spent
   // the free plan's monthly compute hours by mid-month.
@@ -109,7 +106,12 @@ export async function createApp(): Promise<express.Express> {
     resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(resourceUrl),
   });
 
-  app.post(resourceUrl.pathname, bearer, async (req, res) => {
+  // Parsed after the bearer check, so only an authenticated caller can make the
+  // server buffer a large body. add_file takes up to about 10 MB as base64,
+  // which is a third bigger again; nothing else here takes a JSON body.
+  const mcpJson = express.json({ limit: '16mb' });
+
+  app.post(resourceUrl.pathname, bearer, mcpJson, async (req, res) => {
     // Stateless: a server and transport per request, so no cross-request state
     // exists that could carry one tenant's scope into another's call.
     const server = buildServer({ version: VERSION });

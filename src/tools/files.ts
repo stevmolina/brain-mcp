@@ -119,7 +119,11 @@ export function fileToolHandlers(files: BrainFiles, access: FileAccess = default
       }
       return textResult(
         [
-          `Upload ${result.path} to ${brain.id} with an HTTP PUT of the raw bytes to this URL, sending the header If-None-Match: *.`,
+          `Upload ${result.path} to ${brain.id} with an HTTP PUT of the raw bytes to this URL, sending exactly these headers: ` +
+            Object.entries(result.required_headers)
+              .map(([name, value]) => `${name}: ${value}`)
+              .join(', ') +
+            '.',
           `It expires in ${Math.round(result.expires_in_seconds / 60)} minutes.`,
           result.upload_url,
         ].join('\n'),

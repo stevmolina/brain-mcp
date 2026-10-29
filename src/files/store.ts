@@ -233,17 +233,20 @@ export class BrainFiles {
     // Refuse early with a clear message; the signed If-None-Match below is what
     // actually holds if someone else adds the same path in the meantime.
     if (await this.stat(brainId, path)) throw alreadyExists(brainId, path);
+    // Both headers are signed into the URL, so the uploader must send them:
+    // If-None-Match keeps the upload add-only, Content-Type keeps get_file honest.
     const upload_url = await getSignedUrl(
       this.s3,
-      new PutObjectCommand({ Bucket: this.bucket, Key: key, IfNoneMatch: '*' }),
-      { expiresIn: PRESIGN_SECONDS },
+      new PutObjectCommand({ Bucket: this.bucket, Key: key, ContentType, IfNoneMatch: '*' }),
+      // The presigner leaves content-type unsigned unless asked.
+      { expiresIn: PRESIGN_SECONDS, signableHeaders: new Set(['content-type']) },
     );
     return {
       status: 'upload_url',
       path,
       upload_url,
       method: 'PUT',
-      required_headers: { 'If-None-Match': '*' },
+      required_headers: { 'Content-Type': ContentType, 'If-None-Match': '*' },
       expires_in_seconds: PRESIGN_SECONDS,
     };
   }
