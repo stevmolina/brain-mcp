@@ -15,6 +15,7 @@
     "offboard-brain": "tsx scripts/offboard-brain.ts",
     "reindex": "tsx scripts/reindex.ts",
     "reconcile": "tsx src/reconcile/run.ts",
+    "upload-files": "tsx scripts/upload-files.ts",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
