@@ -8,7 +8,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { closeDb, db } from '../src/db/client.js';
 import { migrate } from '../src/db/migrate.js';
-import { Forbidden, requireBrain } from '../src/auth/access.js';
+import { Forbidden, requireBrain, requireBrainWriter } from '../src/auth/access.js';
 import { loadClaim } from '../src/tools/read.js';
 import { claimId } from '../src/indexer/parse.js';
 
@@ -121,6 +121,15 @@ describe('brain resolution', () => {
 
   it('resolves a brain the caller does own', async () => {
     const brain = await requireBrain(USER_B, B);
+    expect(brain.id).toBe(B);
+  });
+
+  it('refuses file writes to a brain the caller cannot even read', async () => {
+    await expect(requireBrainWriter(USER_B, A)).rejects.toBeInstanceOf(Forbidden);
+  });
+
+  it('lets the owner write files to their own brain', async () => {
+    const brain = await requireBrainWriter(USER_B, B);
     expect(brain.id).toBe(B);
   });
 

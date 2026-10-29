@@ -24,6 +24,7 @@ interface CacheEntry<T> {
 
 const identityCache = new Map<string, CacheEntry<string | null>>();
 const accessCache = new Map<string, CacheEntry<boolean>>();
+const pushCache = new Map<string, CacheEntry<boolean>>();
 
 function readCache<T>(cache: Map<string, CacheEntry<T>>, key: string): T | undefined {
   const hit = cache.get(key);
@@ -101,6 +102,46 @@ export async function canReadBrain(brain: BrainRow, githubLogin: string | null):
   }
 }
 
+/**
+ * Does this GitHub login have write (push) access to the brain's repo? Asked of
+ * GitHub the same way as read access, and cached for the same minute.
+ */
+export async function canWriteBrain(brain: BrainRow, githubLogin: string | null): Promise<boolean> {
+  if (!githubLogin) return false;
+  if (githubLogin.toLowerCase() === brain.owner_github_login.toLowerCase()) return true;
+  if (!brain.installation_id) return false;
+
+  const key = `${brain.id}::${githubLogin.toLowerCase()}`;
+  const cached = readCache(pushCache, key);
+  if (cached !== undefined) return cached;
+
+  const ttl = loadConfig().accessCacheTtlMs;
+  try {
+    const octokit = await installationOctokit(brain.installation_id);
+    const { data } = await octokit.request('GET /repos/{owner}/{repo}/collaborators/{username}/permission', {
+      owner: brain.repo_owner,
+      repo: brain.repo_name,
+      username: githubLogin,
+    });
+    // `permission` folds maintain into write; admin implies push.
+    const permission = (data as { permission?: string }).permission;
+    return writeCache(pushCache, key, permission === 'admin' || permission === 'write', ttl);
+  } catch (error) {
+    const status = (error as { status?: number }).status;
+    if (status === 404) return writeCache(pushCache, key, false, ttl);
+    console.error(
+      JSON.stringify({
+        level: 'warn',
+        at: 'access.canWriteBrain',
+        brain: brain.id,
+        status,
+        message: 'permission check failed; denying',
+      }),
+    );
+    return writeCache(pushCache, key, false, 10_000);
+  }
+}
+
 export async function getBrain(brainId: string): Promise<BrainRow | null> {
   const { rows } = await db().query<BrainRow>('select * from brains where id = $1', [brainId]);
   return rows[0] ?? null;
@@ -148,14 +189,29 @@ export async function requireBrain(workosUserId: string, requested?: string): Pr
   );
 }
 
+/**
+ * requireBrain, then proves the caller may also push to the brain's repo. Used
+ * by writes that land without a pull request, such as adding a file.
+ */
+export async function requireBrainWriter(workosUserId: string, requested?: string): Promise<BrainRow> {
+  const brain = await requireBrain(workosUserId, requested);
+  if (brain.owner_workos_user_id === workosUserId) return brain;
+  const login = await githubLoginForWorkosUser(workosUserId);
+  if (await canWriteBrain(brain, login)) return brain;
+  throw new Forbidden(`You can read ${brain.id} but not write to it: adding files needs push access to its repo.`);
+}
+
 /** Clears the caches. Used by offboarding, so revocation is immediate. */
 export function clearAccessCaches(brainId?: string): void {
   if (!brainId) {
     accessCache.clear();
+    pushCache.clear();
     identityCache.clear();
     return;
   }
-  for (const key of accessCache.keys()) if (key.startsWith(`${brainId}::`)) accessCache.delete(key);
+  for (const cache of [accessCache, pushCache]) {
+    for (const key of cache.keys()) if (key.startsWith(`${brainId}::`)) cache.delete(key);
+  }
 }
 
 export { appOctokit };
