@@ -73,7 +73,8 @@ export async function createApp(): Promise<express.Express> {
     },
   );
 
-  app.use(express.json({ limit: '4mb' }));
+  // add_file takes up to about 10 MB as base64, which is a third bigger again.
+  app.use(express.json({ limit: '16mb' }));
 
   // Liveness only. The container health check calls this every 30s, and a
   // database query here kept Neon's compute from ever suspending, which spent
