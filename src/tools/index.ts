@@ -23,11 +23,11 @@ export function serverInstructions(withFiles: boolean): string {
     'There is one brain per project or client, with an id like owner/repo; list_brains shows yours.',
     '',
     'Use it without being asked:',
-    '- Before you answer anything about a project, a client, a person, a past decision or "what did we decide", search the matching brain (list_brains first if you lack its id). Cite each claim you use by page and date.',
+    '- Before answering anything about a project, client, person, past decision or "what did we decide", search the matching brain (list_brains first if you lack its id). Cite each claim you use by its page, and its date when it has one.',
   ];
   if (withFiles) {
     lines.push(
-      '- When the user mentions or needs a client file (a spreadsheet, a PDF, a report), check list_files and get_file before asking for it.',
+      '- When the user mentions or needs a client file (spreadsheet, PDF, report), check list_files and get_file before asking for it.',
       '- When the user shares a client file worth keeping, or you produce one, store it with add_file without asking, named date first (YYYY-MM-DD-name.ext) in a sensible folder such as inputs/.',
     );
   }
@@ -36,7 +36,7 @@ export function serverInstructions(withFiles: boolean): string {
     '',
     'Pick the brain by the project or client the user names. If several match, say which one you used.',
     '',
-    'Every claim carries its page, authority and verification date. Quote them, and say when a claim is old or superseded.',
+    'Claims carry a page, plus an authority and verification date when set. Say when a claim is old, undated or superseded.',
   );
   if (withFiles) lines.push('Files are add-only: an existing path is refused and nothing is ever deleted.');
   return lines.join('\n');

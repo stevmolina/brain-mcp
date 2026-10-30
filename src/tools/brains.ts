@@ -45,7 +45,7 @@ export async function listBrains(workosUserId: string) {
     );
   }
   const lines = brains.map(
-    (b) => `- ${b.id}${b.last_indexed_at ? ` (indexed ${b.last_indexed_at})` : ' (not indexed yet)'}`,
+    (b) => `- ${b.id}${b.repo === b.id ? '' : ` (repo ${b.repo})`}${b.last_indexed_at ? ` (indexed ${b.last_indexed_at})` : ' (not indexed yet)'}`,
   );
   return textResult(
     [`Brains you can reach (${brains.length}). Pass the id as \`brain\` to the other tools.`, ...lines].join('\n'),

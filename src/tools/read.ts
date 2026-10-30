@@ -21,7 +21,7 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
       title: 'Search a brain',
       description:
         'Search a project\'s memory before you answer anything about a project, client, person, past decision or "what did we decide", even when the user did not ask you to look. ' +
-        'Returns claims with page, line, authority and verification date: cite the page and date. ' +
+        'Returns claims with page, line, and authority and verification date when set: cite the page, and the date when there is one. ' +
         'Pass `brain` (an id from list_brains) when there is more than one.',
       inputSchema: z.object({
         query: z.string().min(1).describe('Words to search for.'),
