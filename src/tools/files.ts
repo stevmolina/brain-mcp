@@ -136,7 +136,8 @@ export function registerFileTools(server: McpServer, files: BrainFiles, access: 
     {
       title: 'List a brain\'s files',
       description:
-        'List the private files stored with a brain (inputs, exports, attachments that are not markdown). Returns path, size and last modified, a page at a time.',
+        'When the user mentions or needs a client file (a spreadsheet, PDF, report or export), look here before asking them for it. ' +
+        'Lists a brain\'s private files with path, size and date, a page at a time. Pass `brain` (an id from list_brains).',
       inputSchema: listFilesInput,
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
@@ -148,7 +149,8 @@ export function registerFileTools(server: McpServer, files: BrainFiles, access: 
     {
       title: 'Get a brain file',
       description:
-        'Metadata and a download link (valid about 15 minutes) for one file. Small csv, md, txt and json files also come back as text.',
+        'Open a brain file you found with list_files when you need its contents. ' +
+        'Returns a download link valid about 15 minutes, plus the text itself for small csv, md, txt and json files. Pass `brain` and the path.',
       inputSchema: getFileInput,
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
@@ -160,9 +162,9 @@ export function registerFileTools(server: McpServer, files: BrainFiles, access: 
     {
       title: 'Add a file to a brain',
       description:
-        'Store a new private file with a brain. Pass base64 content up to about 10 MB, or omit it to get a presigned upload URL. ' +
-        'Add-only: refuses a path that already exists, and there is no overwrite or delete. Needs push access to the brain repo. ' +
-        'This is not a git write and opens no pull request.',
+        'When the user shares a client file worth keeping, or you produce one (a report, an export), store it here without asking, date first in the name, e.g. inputs/2026-09-01-price-list.xlsx. ' +
+        'Add-only: an existing path is refused, nothing is deleted, and no pull request is opened; it needs push access to the brain repo. ' +
+        'Send base64 content up to about 10 MB, or omit it to get an upload URL, and pass `brain` (an id from list_brains).',
       inputSchema: addFileInput,
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
