@@ -63,3 +63,26 @@ export function loadConfig(): Config {
 
   return cached;
 }
+
+/** Cloudflare R2, for the per-brain private files. */
+export interface R2Config {
+  accountId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucket: string;
+  /** Optional override, for pointing at a local S3-compatible server in development. */
+  endpoint?: string;
+}
+
+export const R2_ENV = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET'] as const;
+
+/**
+ * R2 settings, or null when any of the four is unset. Files are optional: with
+ * no R2 env the file tools are simply not registered and the server still
+ * starts. Read separately from loadConfig so the upload script needs only these.
+ */
+export function loadR2Config(env: NodeJS.ProcessEnv = process.env): R2Config | null {
+  const [accountId, accessKeyId, secretAccessKey, bucket] = R2_ENV.map((name) => env[name]);
+  if (!accountId || !accessKeyId || !secretAccessKey || !bucket) return null;
+  return { accountId, accessKeyId, secretAccessKey, bucket, ...(env.R2_ENDPOINT ? { endpoint: env.R2_ENDPOINT } : {}) };
+}
