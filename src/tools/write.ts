@@ -14,10 +14,8 @@ import { openPullRequest, WriteRefused, type PullRequestResult } from '../github
 import { resolveProfile } from '../profiles/index.js';
 import { appendClaim, locateClaim, readMarker, removeClaim, replaceClaim } from './edits.js';
 import { loadClaim } from './read.js';
-import { errorResult, handling, textResult, today } from './shared.js';
+import { brainArg, errorResult, handling, textResult, today } from './shared.js';
 import type { ToolContext } from './index.js';
-
-const brainArg = z.string().optional().describe('Brain id, e.g. "owner/repo".');
 
 const authorityArg = z
   .string()
@@ -43,7 +41,9 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
     {
       title: 'Remember a new claim',
       description:
-        'Propose a new claim for a brain. Opens a pull request against the brain repo. Never merges, never writes to the sources directory.',
+        'When a durable decision or fact is settled in the conversation, propose it here so the project remembers it; search first to avoid a duplicate. ' +
+        'Opens a pull request on the brain repo and nothing changes until a person merges it, so tell the user that. ' +
+        'Pass `brain` (an id from list_brains).',
       inputSchema: z.object({
         text: z.string().min(3).describe('The claim, as one sentence.'),
         brain: brainArg,
@@ -97,7 +97,8 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
     {
       title: 'Update an existing claim',
       description:
-        'Propose a replacement for a claim, keeping a supersedes marker back to the old one. Opens a pull request; never merges.',
+        'When a claim you found is out of date or wrong, propose the corrected wording here, or just refresh its verification date. ' +
+        'Opens a pull request that links back to the old claim; nothing changes until a person merges it. Pass the claim id and `brain` from your search.',
       inputSchema: z.object({
         claim_id: z.string().min(8),
         text: z.string().min(3).optional().describe('New wording. Omit to only refresh the verification date.'),
@@ -160,7 +161,8 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
     {
       title: 'Forget a claim',
       description:
-        'Propose removing a claim from its page. Opens a pull request; never merges, and the received evidence in the sources directory is untouched.',
+        'When a claim is no longer true and nothing replaces it, propose removing it; use update_fact instead when there is a new value. ' +
+        'Opens a pull request; nothing changes until a person merges it, and the evidence files are untouched. Pass the claim id and `brain` from your search.',
       inputSchema: z.object({
         claim_id: z.string().min(8),
         brain: brainArg,

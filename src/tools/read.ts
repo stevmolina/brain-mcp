@@ -10,14 +10,9 @@ import { db } from '../db/client.js';
 import { requireBrain } from '../auth/access.js';
 import { workosUserId } from '../auth/workos.js';
 import { isoDay } from '../dates.js';
-import { handling, renderClaimLine, textResult, toClaimView } from './shared.js';
+import { brainArg, handling, renderClaimLine, textResult, toClaimView } from './shared.js';
 import type { ClaimRow, SourceRow } from '../types.js';
 import type { ToolContext } from './index.js';
-
-const brainArg = z
-  .string()
-  .optional()
-  .describe('Brain id, e.g. "owner/repo". Omit when you have exactly one brain.');
 
 export function registerReadTools(server: McpServer, ctx: ToolContext): void {
   server.registerTool(
@@ -25,7 +20,9 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
     {
       title: 'Search a brain',
       description:
-        'Full-text search over a brain\'s claims. Returns each claim with its page, line, authority and verification date.',
+        'Search a project\'s memory before you answer anything about a project, client, person, past decision or "what did we decide", even when the user did not ask you to look. ' +
+        'Returns claims with page, line, and authority and verification date when set: cite the page, and the date when there is one. ' +
+        'Pass `brain` (an id from list_brains) when there is more than one.',
       inputSchema: z.object({
         query: z.string().min(1).describe('Words to search for.'),
         brain: brainArg,
@@ -61,7 +58,9 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
     'get_claim',
     {
       title: 'Get one claim',
-      description: 'Fetch a single claim by id, with its neighbours on the same page for context.',
+      description:
+        'Open one claim by id when a search hit matters to your answer, to read it with the lines around it on its page. ' +
+        'Pass the same `brain` as the search.',
       inputSchema: z.object({
         claim_id: z.string().min(8).describe('Claim id, or a prefix of at least 8 characters.'),
         brain: brainArg,
@@ -105,7 +104,8 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
     {
       title: 'Explain a claim',
       description:
-        'Show where a claim came from: its page and commit, the received evidence it cites, and what it superseded or was superseded by.',
+        'Use it when you need to know where a claim came from or whether to trust it. ' +
+        'Shows its page and commit, the evidence it cites, and what it replaced or was replaced by. Pass the same `brain` as the search.',
       inputSchema: z.object({
         claim_id: z.string().min(8),
         brain: brainArg,
