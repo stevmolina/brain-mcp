@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { isoDay } from '../dates.js';
 import type { BrainRow, ClaimRow, ClaimView } from '../types.js';
 
@@ -72,3 +73,13 @@ export class ToolRefusal extends Error {}
 export function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
+/**
+ * The `brain` argument every brain-scoped tool takes. Its description is part of
+ * what a tools-only client (Composio, for one) shows the model, so it says where
+ * ids come from.
+ */
+export const brainArg = z
+  .string()
+  .optional()
+  .describe('Brain id, e.g. "owner/repo". Call list_brains to see your ids. Omit only when you have exactly one brain.');

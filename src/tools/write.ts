@@ -14,10 +14,8 @@ import { openPullRequest, WriteRefused, type PullRequestResult } from '../github
 import { resolveProfile } from '../profiles/index.js';
 import { appendClaim, locateClaim, readMarker, removeClaim, replaceClaim } from './edits.js';
 import { loadClaim } from './read.js';
-import { errorResult, handling, textResult, today } from './shared.js';
+import { brainArg, errorResult, handling, textResult, today } from './shared.js';
 import type { ToolContext } from './index.js';
-
-const brainArg = z.string().optional().describe('Brain id, e.g. "owner/repo".');
 
 const authorityArg = z
   .string()

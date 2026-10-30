@@ -10,14 +10,9 @@ import { db } from '../db/client.js';
 import { requireBrain } from '../auth/access.js';
 import { workosUserId } from '../auth/workos.js';
 import { isoDay } from '../dates.js';
-import { handling, renderClaimLine, textResult, toClaimView } from './shared.js';
+import { brainArg, handling, renderClaimLine, textResult, toClaimView } from './shared.js';
 import type { ClaimRow, SourceRow } from '../types.js';
 import type { ToolContext } from './index.js';
-
-const brainArg = z
-  .string()
-  .optional()
-  .describe('Brain id, e.g. "owner/repo". Omit when you have exactly one brain.');
 
 export function registerReadTools(server: McpServer, ctx: ToolContext): void {
   server.registerTool(

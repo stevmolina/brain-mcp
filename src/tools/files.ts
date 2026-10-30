@@ -13,7 +13,7 @@ import { requireBrain, requireBrainWriter } from '../auth/access.js';
 import { workosUserId } from '../auth/workos.js';
 import { FileRefused } from '../files/paths.js';
 import { INLINE_UPLOAD_MAX_BYTES, type BrainFiles } from '../files/store.js';
-import { handling, textResult } from './shared.js';
+import { brainArg, handling, textResult } from './shared.js';
 import type { BrainRow } from '../types.js';
 
 /** How a call proves who may read or write a brain. Injected so tests need no database. */
@@ -23,11 +23,6 @@ export interface FileAccess {
 }
 
 const defaultAccess: FileAccess = { read: requireBrain, write: requireBrainWriter };
-
-const brainArg = z
-  .string()
-  .optional()
-  .describe('Brain id, e.g. "owner/repo". Omit when you have exactly one brain.');
 
 const pathArg = z
   .string()

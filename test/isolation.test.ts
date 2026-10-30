@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { closeDb, db } from '../src/db/client.js';
 import { migrate } from '../src/db/migrate.js';
 import { Forbidden, requireBrain, requireBrainWriter } from '../src/auth/access.js';
+import { listBrains } from '../src/tools/brains.js';
 import { loadClaim } from '../src/tools/read.js';
 import { claimId } from '../src/indexer/parse.js';
 
@@ -135,6 +136,31 @@ describe('brain resolution', () => {
 
   it('refuses to guess when the caller has no brains', async () => {
     await expect(requireBrain('user_isolation_test_nobody')).rejects.toBeInstanceOf(Forbidden);
+  });
+});
+
+describe('list_brains', () => {
+  function ids(result: Awaited<ReturnType<typeof listBrains>>): string[] {
+    return (result.structuredContent!.brains as Array<{ id: string }>).map((b) => b.id);
+  }
+
+  it('lists only the brains the caller can reach', async () => {
+    const result = await listBrains(USER_B);
+    expect(ids(result)).toEqual([B]);
+    expect(result.content[0]!.text).toContain(B);
+    expect(result.content[0]!.text).not.toContain(A);
+  });
+
+  it('never names another tenant\'s brain, in the text or the structured result', async () => {
+    const result = await listBrains(USER_A);
+    expect(ids(result)).toEqual([A]);
+    expect(JSON.stringify(result)).not.toContain(B);
+  });
+
+  it('returns an empty list, not an error, for a caller with no brains', async () => {
+    const result = await listBrains('user_isolation_test_nobody');
+    expect(ids(result)).toEqual([]);
+    expect(result.content[0]!.text).toMatch(/no brains yet/);
   });
 });
 

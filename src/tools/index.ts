@@ -1,7 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/server';
-import { accessibleBrains } from '../auth/access.js';
-import { workosUserId } from '../auth/workos.js';
 import { brainFilesFromEnv } from '../files/index.js';
+import { registerBrainTools } from './brains.js';
 import { registerFileTools } from './files.js';
 import { registerReadTools } from './read.js';
 import { registerWriteTools } from './write.js';
@@ -39,39 +38,7 @@ export function buildServer(ctx: ToolContext): McpServer {
   const files = brainFilesFromEnv();
   if (files) registerFileTools(server, files);
 
-  // Which brains the caller can reach is context, not an action, so it is a
-  // resource rather than a seventh tool.
-  server.registerResource(
-    'brains',
-    'brain://mine',
-    {
-      title: 'Your brains',
-      description: 'Brains this account may read, as answered by GitHub repository access.',
-      mimeType: 'application/json',
-    },
-    async (uri, mcp) => {
-      const brains = await accessibleBrains(workosUserId(mcp.http?.authInfo));
-      return {
-        contents: [
-          {
-            uri: uri.href,
-            mimeType: 'application/json',
-            text: JSON.stringify(
-              brains.map((brain) => ({
-                id: brain.id,
-                repo: `${brain.repo_owner}/${brain.repo_name}`,
-                default_branch: brain.default_branch,
-                last_indexed_commit: brain.last_indexed_commit,
-                last_indexed_at: brain.last_indexed_at,
-              })),
-              null,
-              2,
-            ),
-          },
-        ],
-      };
-    },
-  );
+  registerBrainTools(server);
 
   return server;
 }
