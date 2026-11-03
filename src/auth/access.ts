@@ -68,7 +68,7 @@ export async function githubLoginForWorkosUser(workosUserId: string): Promise<st
 /** Does this GitHub login have read access to the brain's repo? */
 export async function canReadBrain(brain: BrainRow, githubLogin: string | null): Promise<boolean> {
   if (!githubLogin) return false;
-  if (githubLogin.toLowerCase() === brain.owner_github_login.toLowerCase()) return true;
+  if (brain.owner_github_login && githubLogin.toLowerCase() === brain.owner_github_login.toLowerCase()) return true;
   if (!brain.installation_id) return false;
 
   const key = `${brain.id}::${githubLogin.toLowerCase()}`;
@@ -108,7 +108,7 @@ export async function canReadBrain(brain: BrainRow, githubLogin: string | null):
  */
 export async function canWriteBrain(brain: BrainRow, githubLogin: string | null): Promise<boolean> {
   if (!githubLogin) return false;
-  if (githubLogin.toLowerCase() === brain.owner_github_login.toLowerCase()) return true;
+  if (brain.owner_github_login && githubLogin.toLowerCase() === brain.owner_github_login.toLowerCase()) return true;
   if (!brain.installation_id) return false;
 
   const key = `${brain.id}::${githubLogin.toLowerCase()}`;
@@ -181,7 +181,7 @@ export async function requireBrain(workosUserId: string, requested?: string): Pr
   if (brains.length === 1) return brains[0]!;
   if (brains.length === 0) {
     throw new Forbidden(
-      'You have no brains yet. Install the GitHub App on a markdown repo and register it as a brain.',
+      'You have no brains yet. Sign up at the site for a starter brain, or install the GitHub App on a markdown repo and register it.',
     );
   }
   throw new Forbidden(

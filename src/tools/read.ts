@@ -11,7 +11,7 @@ import { requireBrain } from '../auth/access.js';
 import { workosUserId } from '../auth/workos.js';
 import { isoDay } from '../dates.js';
 import { brainArg, handling, renderClaimLine, textResult, toClaimView } from './shared.js';
-import type { ClaimRow, SourceRow } from '../types.js';
+import type { BrainRow, ClaimRow, SourceRow } from '../types.js';
 import type { ToolContext } from './index.js';
 
 export function registerReadTools(server: McpServer, ctx: ToolContext): void {
@@ -36,18 +36,7 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
     },
     handling(async (args, mcp) => {
       const brain = await requireBrain(workosUserId(mcp.http?.authInfo), args.brain);
-      const { rows } = await db().query<ClaimRow & { rank: number }>(
-        `select c.*, ts_rank(c.fts, websearch_to_tsquery('english', $2)) as rank
-           from claims c
-          where c.brain_id = $1
-            and (c.fts @@ websearch_to_tsquery('english', $2) or c.text ilike $3)
-            and ($4 or c.superseded_by is null)
-          order by rank desc, c.page_path, c.line
-          limit $5`,
-        [brain.id, args.query, `%${args.query}%`, args.include_superseded, args.limit],
-      );
-
-      const views = rows.map((row) => toClaimView(brain, row));
+      const views = await searchClaims(brain, args.query, args.limit, args.include_superseded);
       const header = `${views.length} claim${views.length === 1 ? '' : 's'} in ${brain.id} for "${args.query}"`;
       const body = views.length ? views.map(renderClaimLine).join('\n') : 'No matching claims.';
       return textResult(`${header}\n\n${body}`, { brain: brain.id, claims: views });
@@ -193,6 +182,36 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
   );
 
   void ctx;
+}
+
+export async function searchClaims(
+  brain: BrainRow,
+  query: string,
+  limit: number,
+  includeSuperseded = false,
+): Promise<ReturnType<typeof toClaimView>[]> {
+  const { rows } = await db().query<ClaimRow & { rank: number }>(
+    `select c.*, ts_rank(c.fts, websearch_to_tsquery('english', $2)) as rank
+       from claims c
+      where c.brain_id = $1
+        and (c.fts @@ websearch_to_tsquery('english', $2) or c.text ilike $3)
+        and ($4 or c.superseded_by is null)
+      order by rank desc, c.page_path, c.line
+      limit $5`,
+    [brain.id, query, `%${query}%`, includeSuperseded, limit],
+  );
+  return rows.map((row) => toClaimView(brain, row));
+}
+
+export async function recentClaims(brain: BrainRow, limit: number): Promise<ReturnType<typeof toClaimView>[]> {
+  const { rows } = await db().query<ClaimRow>(
+    `select * from claims
+      where brain_id = $1 and superseded_by is null
+      order by created_at desc, line desc
+      limit $2`,
+    [brain.id, limit],
+  );
+  return rows.map((row) => toClaimView(brain, row));
 }
 
 export async function loadClaim(brainId: string, claimIdOrPrefix: string): Promise<ClaimRow | null> {

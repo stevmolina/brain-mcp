@@ -1,5 +1,9 @@
 # Plan: many users, many organizations
 
+Status: email signup now creates a hosted starter brain (no repo, Free or Team).
+Self-serve registration of a GitHub repo, described as phase 2 below, is still
+not built. `pnpm register-brain` remains the way a repo becomes a brain.
+
 brain.mcpbox.dev is becoming a service anyone can use, alone or with their team.
 It gets there in three phases. Phase 1, private files per brain, ships with this
 plan. Phases 2 and 3 are decisions and steps only; no code yet.

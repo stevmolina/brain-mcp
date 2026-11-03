@@ -51,5 +51,10 @@ names, descriptions and schemas.
 - It picks the brain by the project or client the user names, and says which one
   it used when several match.
 
-See [AGENTS.md](AGENTS.md) for the rules, the claim format and how to run it, and
-[docs/plan-multi-org.md](docs/plan-multi-org.md) for where multi-user brains go next.
+Someone with an email can sign up on the site and get a hosted starter brain.
+No GitHub account and no admin command. The Free plan holds 5 notes. Team is
+$10/month, checked out with Polar, and the plan changes when Polar's webhook
+says so. A git repo registered with `register-brain` is unchanged and is not
+capped. See [AGENTS.md](AGENTS.md) for the rules, the claim format, the Polar
+env vars, and how to run it, and [docs/plan-multi-org.md](docs/plan-multi-org.md)
+for where multi-user brains go next.

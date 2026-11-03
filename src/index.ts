@@ -27,6 +27,8 @@ import { loadConfig } from './config.js';
 import { authorizationServerMetadata, createTokenVerifier } from './auth/workos.js';
 import { Forbidden } from './auth/access.js';
 import { handleGithubWebhook } from './github/webhook.js';
+import { handlePolarWebhook } from './billing/webhook.js';
+import { registerWebRoutes } from './web/routes.js';
 import { buildServer } from './tools/index.js';
 import { db } from './db/client.js';
 
@@ -68,6 +70,18 @@ export async function createApp(): Promise<express.Express> {
     (req, res) => {
       handleGithubWebhook(req, res).catch((error) => {
         console.error(JSON.stringify({ level: 'error', at: 'webhook', message: String(error) }));
+        if (!res.headersSent) res.status(500).json({ error: 'webhook failed' });
+      });
+    },
+  );
+
+  // Same reason as GitHub: the signature is over the raw body.
+  app.post(
+    '/webhooks/polar',
+    express.raw({ type: 'application/json', limit: '1mb' }),
+    (req, res) => {
+      handlePolarWebhook(req, res).catch((error) => {
+        console.error(JSON.stringify({ level: 'error', at: 'polar.webhook', message: String(error) }));
         if (!res.headersSent) res.status(500).json({ error: 'webhook failed' });
       });
     },
@@ -132,6 +146,10 @@ export async function createApp(): Promise<express.Express> {
   app.get(resourceUrl.pathname, bearer, (_req, res) => {
     res.status(405).json({ error: 'Streamable HTTP: POST to this endpoint' });
   });
+
+  // Signup, the starter brain, and billing. Before the static site so a file
+  // in site/ cannot shadow /signup, /app, or /billing.
+  registerWebRoutes(app);
 
   // After every API and discovery route, so a file in site/ cannot shadow
   // /mcp, /healthz, /readyz, /webhooks/github, or the OAuth documents.

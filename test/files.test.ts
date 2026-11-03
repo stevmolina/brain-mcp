@@ -270,6 +270,7 @@ describe('the tools resolve the brain before touching files', () => {
     repo_name: id.split('/')[1]!,
     default_branch: 'main',
     installation_id: null,
+    kind: 'github',
     profile: {},
     last_indexed_commit: null,
     last_indexed_at: null,

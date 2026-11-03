@@ -34,7 +34,7 @@ export interface EditPlan {
   commitMessage: string;
 }
 
-function assertWritablePage(brain: BrainRow, page: string): void {
+export function assertWritablePage(brain: BrainRow, page: string): void {
   const profile = resolveProfile(brain.profile);
   const normalized = page.replace(/^\.?\//, '');
   if (normalized.includes('..')) throw new WriteRefused(`Refusing to write outside the repo: ${page}`);

@@ -21,9 +21,12 @@ export function toClaimView(brain: BrainRow, row: ClaimRow): ClaimView {
     superseded_by: row.superseded_by,
     // Page paths carry spaces and other characters GitHub needs percent-encoded,
     // and the link is the whole point of returning provenance.
+    // A hosted brain has no GitHub blob to link. The page path is the location.
     url:
-      `https://github.com/${brain.repo_owner}/${brain.repo_name}/blob/${row.commit_sha}/` +
-      `${row.page_path.split('/').map(encodeURIComponent).join('/')}#L${row.line}`,
+      brain.kind === 'hosted'
+        ? `${row.page_path}#L${row.line}`
+        : `https://github.com/${brain.repo_owner}/${brain.repo_name}/blob/${row.commit_sha}/` +
+          `${row.page_path.split('/').map(encodeURIComponent).join('/')}#L${row.line}`,
   };
 }
 

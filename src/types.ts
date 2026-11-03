@@ -1,11 +1,14 @@
 export interface BrainRow {
   id: string;
   owner_workos_user_id: string;
-  owner_github_login: string;
+  /** Null on a hosted starter brain, which has no GitHub repo. */
+  owner_github_login: string | null;
   repo_owner: string;
   repo_name: string;
   default_branch: string;
   installation_id: string | null;
+  /** github: a repo, indexed from commits. hosted: signup, markdown in pages. */
+  kind: 'github' | 'hosted';
   profile: unknown;
   last_indexed_commit: string | null;
   last_indexed_at: Date | null;
