@@ -4,7 +4,7 @@
 
 Agent Brain is a shared memory for a team. Notes live in your own git repo as plain markdown. Every chat answers from those notes and shows the source file. Edit a note once and every agent uses the new version.
 
-The Free plan is $0: your notes, any agent, a source on every answer, and your git repo. The Team plan is USD 10/month: shared memory, and a record of who changed what.
+The Free plan is $0: a starter brain from your email, your notes in any agent, a source on every answer, and 5 notes. The Team plan is USD 10/month: unlimited notes, and you can manage or cancel any time. A git repo can still be registered as a brain.
 
 Made by Steven Molina, Forward Deployed AI Engineer (https://stevmolina.com).
 

@@ -36,6 +36,7 @@ const brain: BrainRow = {
   repo_name: 'notes',
   default_branch: 'main',
   installation_id: '42',
+  kind: 'github',
   profile: {},
   last_indexed_commit: null,
   last_indexed_at: null,

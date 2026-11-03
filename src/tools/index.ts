@@ -32,7 +32,7 @@ export function serverInstructions(withFiles: boolean): string {
     );
   }
   lines.push(
-    '- When a durable decision or fact is settled in the conversation, propose it with remember. Tell the user it opens a pull request on the brain repo and nothing changes until a person merges it. Use update_fact or forget for an outdated claim.',
+    '- When a durable decision or fact is settled, record it with remember. On a git brain this opens a pull request and nothing changes until a person merges it, so say that. On a hosted starter brain it is saved immediately. Use update_fact or forget for an outdated claim.',
     '',
     'Pick the brain by the project or client the user names. If several match, say which one you used.',
     '',

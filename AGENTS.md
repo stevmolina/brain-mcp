@@ -124,6 +124,43 @@ Deployed to the OVH VPS under Dokploy (lane 1), behind Traefik at
 port and Traefik reaches it over the docker network; nothing on the box binds a
 public port but Traefik. Memory-cap the container.
 
+## Signup and billing
+
+A person with an email can sign up at `/signup` through WorkOS AuthKit. The
+callback creates an `accounts` row and a hosted starter brain (`hosted/<id>`).
+No GitHub repo and no `register-brain`. That command, and every existing repo
+brain, keep working.
+
+Hosted notes live in `pages`, which is the markdown for that brain. Claims are
+still derived: drop them and reindex the pages, lose nothing. A hosted
+`remember` writes the page and reindexes immediately, because there is no repo
+to open a pull request against. A git brain still only opens a pull request.
+Nothing merges, and nothing writes `sources/`.
+
+The Free plan holds 5 notes on a hosted brain. Team is $10/month via Polar.
+The plan changes only when a signed webhook says so. Git repo brains are not
+capped. A hosted brain is readable by the WorkOS user who owns it. GitHub is
+still the only permission list for repo brains.
+
+`accounts` and `billing_events` are not brain content. They record what Polar
+says the subscription is. They cannot live in the customer's markdown, because
+the customer could then change their own plan.
+
+Checkout and the webhook stay off until every Polar value is set, and the
+server still starts. Signup itself needs `BILLING_LINK_SECRET`. Names match
+computer-mcp. `POLAR_PRO_PRODUCT_ID` is the Team product. `POLAR_SERVER` is
+`sandbox` or `production`; anything else, including an empty value, stays on
+sandbox.
+
+```
+POLAR_SERVER
+POLAR_API_KEY
+POLAR_ORGANIZATION_ID
+POLAR_PRO_PRODUCT_ID
+POLAR_WEBHOOK_SECRET
+BILLING_LINK_SECRET
+```
+
 ## Open, deliberately
 
 - **No embeddings.** Sending tenant text to an embedding provider is a

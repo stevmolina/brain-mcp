@@ -76,7 +76,8 @@
         <a href="#pricing">Pricing</a>
         <a href="#guide">Guide</a>
         <a href="https://computer.mcpbox.dev">Computer</a>
-        <a class="opill" href="#how">Get started</a>
+        <a href="/login">Sign in</a>
+        <a class="opill" href="/signup">Get started</a>
       </nav>
     </header>
 
@@ -86,16 +87,16 @@
         <span class="hw pk pin note-label">your team's notes</span>
         <h1 class="pin hero-title">Your agents<br><span class="hl">remember.</span></h1>
         <p class="pin hero-sub">Write a note once. Claude, Cursor and every chat answer from it, and show the source.</p>
-        <div class="pin cta-wrap"><a class="cta" href="#how">Get started</a></div>
+        <div class="pin cta-wrap"><a class="cta" href="/signup">Get started</a></div>
         <span class="hw yl pin free-tag">free to try ✦</span>
-        <div class="sticky st-y pin sticky-price"><small>pricing.md</small>pricing: per seat,<br>$12 / month</div>
+        <div class="sticky st-y pin sticky-price"><small>pricing.md</small>pricing:<br>$10 / month</div>
         <div class="sticky st-b pin sticky-launch"><small>decisions.md</small>launch: Nov 4<br>owner: Leo</div>
         <svg class="pin deco hero-curve" width="160" height="260" aria-hidden="true"><path d="M10 250 C70 250,90 180,70 120 C55 70,100 30,150 30" stroke="#111" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M150 30 l-14 -8 M150 30 l-10 12" stroke="#111" stroke-width="3" stroke-linecap="round"/></svg>
         <div class="card pin hero-card">
           <span class="hw pk synced">synced</span>
           <div class="msg ask">How do we price the team plan?</div>
-          <div class="msg"><div class="who">Claude</div>Per seat, $12 a month.<br><span class="chip pk">source: pricing.md</span></div>
-          <div class="msg"><div class="who">Cursor</div>Using per-seat pricing ($12/mo) from your notes.<br><span class="chip yl">source: pricing.md</span></div>
+          <div class="msg"><div class="who">Claude</div>$10 a month.<br><span class="chip pk">source: pricing.md</span></div>
+          <div class="msg"><div class="who">Cursor</div>Using the team plan ($10/mo) from your notes.<br><span class="chip yl">source: pricing.md</span></div>
         </div>
         <span class="hw bl pin same-label">same answer, everywhere</span>
         <div class="pin hero-pills">
@@ -122,7 +123,7 @@
             <span class="num">1</span>
             <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 40 L12 28 L34 6 L42 14 L20 36 Z M30 10 L38 18" stroke="#111" stroke-width="3" fill="var(--yl)" stroke-linejoin="round"/></svg>
             <h3>Write it down</h3>
-            <div class="md"># pricing<br>- per seat<br>- $12 / month<br>- annual: 2 months free</div>
+            <div class="md"># pricing<br>- free: $0<br>- team: $10 / month</div>
           </div>
           <div class="card step" id="guide">
             <span class="num">2</span>
@@ -139,7 +140,7 @@
             <span class="num">3</span>
             <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 6 C14 6 8 13 8 21 c0 6 4 9 6 12 v5 h20 v-5 c2-3 6-6 6-12 C40 13 34 6 24 6Z M18 42 h12" stroke="#111" stroke-width="3" fill="var(--pk)" stroke-linejoin="round"/></svg>
             <h3>They remember</h3>
-            <div class="msg"><div class="who">Claude</div>Per seat, $12 a month.<br><span class="chip pk">source: pricing.md</span></div>
+            <div class="msg"><div class="who">Claude</div>$10 a month.<br><span class="chip pk">source: pricing.md</span></div>
           </div>
         </div>
       </section>
@@ -147,7 +148,7 @@
       <section id="same" class="sec">
         <span class="hw yl lbl">any agent</span>
         <h2>Same note. <span class="hl">Same answer.</span></h2>
-        <div class="sticky st-y pin same-note"><small>pricing.md</small>pricing: per seat,<br>$12 / month</div>
+        <div class="sticky st-y pin same-note"><small>pricing.md</small>pricing:<br>$10 / month</div>
         <svg class="pin deco same-arrows" width="1440" height="820" aria-hidden="true">
           <g stroke="#111" stroke-width="3" fill="none" stroke-linecap="round">
             <path d="M600 420 C500 430,420 470,390 560"/><path d="M390 560 l-2 -16 M390 560 l12 -10"/>
@@ -155,9 +156,9 @@
             <path d="M870 420 C960 430,1040 470,1070 560"/><path d="M1070 560 l2 -16 M1070 560 l-12 -10"/>
           </g>
         </svg>
-        <div class="card pin ans ans-claude"><div class="who">Claude</div><div class="msg">It's per seat, $12/mo.<br><span class="chip pk">source: pricing.md</span></div></div>
-        <div class="card pin ans ans-cursor"><div class="who">Cursor</div><div class="msg mono">PRICE_PER_SEAT = 12<br><span class="chip yl" style="font-family:Inter,system-ui,sans-serif">source: pricing.md</span></div></div>
-        <div class="card pin ans ans-chat"><div class="who">Chat</div><div class="msg">$12 per seat, monthly.<br><span class="chip bl">source: pricing.md</span></div></div>
+        <div class="card pin ans ans-claude"><div class="who">Claude</div><div class="msg">It's $10/mo.<br><span class="chip pk">source: pricing.md</span></div></div>
+        <div class="card pin ans ans-cursor"><div class="who">Cursor</div><div class="msg mono">TEAM_PRICE = 10<br><span class="chip yl" style="font-family:Inter,system-ui,sans-serif">source: pricing.md</span></div></div>
+        <div class="card pin ans ans-chat"><div class="who">Chat</div><div class="msg">$10 a month.<br><span class="chip bl">source: pricing.md</span></div></div>
         <span class="hw pk pin edit-once">edit once → all update</span>
       </section>
 
@@ -172,7 +173,7 @@
             <div class="cur cur-ana"><svg width="22" height="22" aria-hidden="true"><path d="M2 2 L20 10 L11 12 L8 21Z" fill="#F06BC4"/></svg><b class="tag-ana">Ana</b></div>
           </div>
           <div class="card tc">
-            <div class="prev prev-price"># pricing.md<br>- per seat, $12/mo<br>- refunds: 30 days</div>
+            <div class="prev prev-price"># pricing.md<br>- team: $10/mo<br>- free to start</div>
             <div class="foot"><h4>Pricing &amp; policy</h4><span class="pill pill-policy">Policy</span></div>
             <div class="cur cur-leo"><svg width="22" height="22" aria-hidden="true"><path d="M2 2 L20 10 L11 12 L8 21Z" fill="#4FA8E8"/></svg><b class="tag-leo">Leo</b></div>
           </div>
@@ -209,21 +210,22 @@
             <h3>Free</h3>
             <div class="p">$0</div>
             <ul>
+              <li>✓ A starter brain from your email</li>
               <li>✓ Your notes, any agent</li>
               <li>✓ Sources on every answer</li>
-              <li>✓ Your git repo</li>
+              <li>✓ 5 notes</li>
             </ul>
-            <a class="cta tight" href="#how">Get started</a>
+            <a class="cta tight" href="/signup">Get started</a>
           </div>
           <div class="plan plan-team">
             <h3>Team</h3>
             <div class="p">$10<span>/mo</span></div>
             <ul>
               <li>✓ Everything in Free</li>
-              <li>✓ Shared team memory</li>
-              <li>✓ Who changed what</li>
+              <li>✓ Unlimited notes</li>
+              <li>✓ Manage or cancel any time</li>
             </ul>
-            <a class="cta tight pink" href="#how">Get started</a>
+            <a class="cta tight pink" href="/signup?plan=team">Get started</a>
           </div>
         </div>
       </section>
@@ -235,13 +237,13 @@
             <b>Q: Which agents work with it?</b>
             <p>A: Claude, Cursor and any chat that can connect.</p>
             <b>Q: Where do my notes live?</b>
-            <p>A: In your own git repo, as plain markdown.</p>
+            <p>A: In your starter brain, as plain markdown. A git repo can still be registered as a brain.</p>
             <b>Q: How do I know where an answer came from?</b>
             <p>A: Every answer shows its source note.</p>
             <b>Q: What if a note changes?</b>
             <p>A: Every agent uses the new version right away.</p>
             <b>Q: Can my whole team use it?</b>
-            <p>A: Yes. Everyone shares the same memory.</p>
+            <p>A: Team is $10 a month and removes the 5-note cap. A git repo brain is shared with whoever GitHub lets read that repo.</p>
           </div>
         </div>
       </section>
@@ -251,7 +253,7 @@
         <svg class="pin deco final-arrow" width="160" height="120" aria-hidden="true"><path d="M10 20 C60 0,120 30,140 90" stroke="#111" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M140 90 l-14 -6 M140 90 l4 -15" stroke="#111" stroke-width="3" stroke-linecap="round"/></svg>
         <div class="sticky st-y pin final-note">
           <small>brain.mcpbox.dev</small>
-          <a class="cta tight" href="#how">Get started →</a>
+          <a class="cta tight" href="/signup">Get started →</a>
         </div>
         <span class="hw pk pin final-free">free to try · takes a minute</span>
       </section>

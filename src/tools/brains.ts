@@ -40,7 +40,7 @@ export async function listBrains(workosUserId: string) {
   const brains = (await accessibleBrains(workosUserId)).map(brainSummary);
   if (brains.length === 0) {
     return textResult(
-      'You have no brains yet. Install the GitHub App on a markdown repo and register it as a brain.',
+      'You have no brains yet. Sign up at the site for a starter brain, or install the GitHub App on a markdown repo and register it.',
       { brains },
     );
   }

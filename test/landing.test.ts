@@ -71,6 +71,24 @@ describe('GET /', () => {
     });
     expect(html).toContain('$10<span>/mo</span>');
     expect(html).toContain('"price": "10"');
+    expect(html).toContain('5 notes');
+    expect(html).not.toContain('$12');
+    expect(html).not.toContain('per seat');
+    expect(html).not.toContain('2 months free');
+
+    const started = [...html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/g)]
+      .map((match) => ({
+        href: match[1]?.match(/href="([^"]+)"/)?.[1] ?? '',
+        text: (match[2] ?? '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim(),
+      }))
+      .filter((link) => link.text.startsWith('Get started'));
+    expect(started.map((link) => link.href).sort()).toEqual([
+      '/signup',
+      '/signup',
+      '/signup',
+      '/signup',
+      '/signup?plan=team',
+    ]);
     expect(html).not.toContain('$X');
     expect(html).not.toContain('price TBD');
     expect(html).not.toContain('answers need review');

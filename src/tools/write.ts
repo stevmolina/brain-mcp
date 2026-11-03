@@ -1,16 +1,19 @@
 /**
- * The three write tools. Writes go to the truth because it's reviewable.
+ * The three write tools.
  *
- * Each one opens a pull request and stops. Nothing merges, nothing touches the
- * brain's sources directory, and no row appears in the index until the indexer
- * reprocesses the merged commit -- which the tool result says out loud, so a
- * caller never mistakes an open PR for a recorded fact.
+ * A git brain opens a pull request and stops. Nothing merges, nothing touches
+ * sources/, and no row appears until the indexer reprocesses the merged commit.
+ * A hosted starter brain has no repo: the note is saved and searchable immediately.
+ * The tool result says which one happened, so a caller never mistakes a proposal
+ * for a recorded fact, or the other way around.
  */
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import { requireBrain } from '../auth/access.js';
 import { workosUserId } from '../auth/workos.js';
 import { openPullRequest, WriteRefused, type PullRequestResult } from '../github/write.js';
+import { isHostedBrain } from '../hosted/brain.js';
+import { forgetHosted, rememberHosted, updateHosted } from '../hosted/notes.js';
 import { resolveProfile } from '../profiles/index.js';
 import { appendClaim, locateClaim, readMarker, removeClaim, replaceClaim } from './edits.js';
 import { loadClaim } from './read.js';
@@ -41,8 +44,9 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
     {
       title: 'Remember a new claim',
       description:
-        'When a durable decision or fact is settled in the conversation, propose it here so the project remembers it; search first to avoid a duplicate. ' +
-        'Opens a pull request on the brain repo and nothing changes until a person merges it, so tell the user that. ' +
+        'When a durable decision or fact is settled in the conversation, record it here so the project remembers it; search first to avoid a duplicate. ' +
+        'On a git brain this opens a pull request and nothing changes until a person merges it, so tell the user that. ' +
+        'On a hosted starter brain the note is saved immediately. ' +
         'Pass `brain` (an id from list_brains).',
       inputSchema: z.object({
         text: z.string().min(3).describe('The claim, as one sentence.'),
@@ -60,6 +64,20 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
     },
     handling(async (args, mcp) => {
       const brain = await requireBrain(workosUserId(mcp.http?.authInfo), args.brain);
+      if (isHostedBrain(brain)) {
+        const saved = await rememberHosted(brain, {
+          text: args.text,
+          page: args.page,
+          heading: args.heading,
+          authority: args.authority ?? null,
+          verifiedAt: args.verified_at ?? null,
+        });
+        return textResult(`Remembered in ${brain.id}. It is searchable now.`, {
+          brain: brain.id,
+          page: saved.page,
+          recorded: true,
+        });
+      }
       const profile = resolveProfile(brain.profile);
       const page = args.page ?? profile.writePage;
       const heading = args.heading ?? profile.writeHeading;
@@ -97,8 +115,9 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
     {
       title: 'Update an existing claim',
       description:
-        'When a claim you found is out of date or wrong, propose the corrected wording here, or just refresh its verification date. ' +
-        'Opens a pull request that links back to the old claim; nothing changes until a person merges it. Pass the claim id and `brain` from your search.',
+        'When a claim you found is out of date or wrong, correct the wording here, or just refresh its verification date. ' +
+        'On a git brain this opens a pull request and nothing changes until a person merges it. On a hosted starter brain the note is updated immediately. ' +
+        'Pass the claim id and `brain` from your search.',
       inputSchema: z.object({
         claim_id: z.string().min(8),
         text: z.string().min(3).optional().describe('New wording. Omit to only refresh the verification date.'),
@@ -110,6 +129,19 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
     },
     handling(async (args, mcp) => {
       const brain = await requireBrain(workosUserId(mcp.http?.authInfo), args.brain);
+      if (isHostedBrain(brain)) {
+        const saved = await updateHosted(brain, {
+          claimId: args.claim_id,
+          text: args.text,
+          authority: args.authority ?? null,
+          verifiedAt: args.verified_at ?? null,
+        });
+        return textResult(`Updated a note in ${brain.id}. It is searchable now.`, {
+          brain: brain.id,
+          page: saved.page,
+          recorded: true,
+        });
+      }
       const claim = await loadClaim(brain.id, args.claim_id);
       if (!claim) return errorResult(`No claim ${args.claim_id} in ${brain.id}.`);
 
@@ -161,8 +193,9 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
     {
       title: 'Forget a claim',
       description:
-        'When a claim is no longer true and nothing replaces it, propose removing it; use update_fact instead when there is a new value. ' +
-        'Opens a pull request; nothing changes until a person merges it, and the evidence files are untouched. Pass the claim id and `brain` from your search.',
+        'When a claim is no longer true and nothing replaces it, remove it; use update_fact instead when there is a new value. ' +
+        'On a git brain this opens a pull request and nothing changes until a person merges it. On a hosted starter brain the note is removed immediately. ' +
+        'Evidence files are untouched. Pass the claim id and `brain` from your search.',
       inputSchema: z.object({
         claim_id: z.string().min(8),
         brain: brainArg,
@@ -172,6 +205,14 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
     },
     handling(async (args, mcp) => {
       const brain = await requireBrain(workosUserId(mcp.http?.authInfo), args.brain);
+      if (isHostedBrain(brain)) {
+        const saved = await forgetHosted(brain, args.claim_id);
+        return textResult(`Removed a note from ${brain.id}.`, {
+          brain: brain.id,
+          page: saved.page,
+          recorded: true,
+        });
+      }
       const claim = await loadClaim(brain.id, args.claim_id);
       if (!claim) return errorResult(`No claim ${args.claim_id} in ${brain.id}.`);
 
