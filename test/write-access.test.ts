@@ -299,7 +299,7 @@ describe('landEdit', () => {
     expect(routes()).not.toContain('POST /repos/{owner}/{repo}/pulls');
   });
 
-  it('still refuses sources/, non-markdown and .. in direct mode, before calling GitHub', async () => {
+  it('still refuses sources/, non-markdown and .. in direct mode, before touching the page', async () => {
     fakeGitHub();
     linkedTo('write-test');
     for (const page of ['sources/2026-01-01-email.md', 'wiki/data.json', 'wiki/../../etc.md']) {
