@@ -59,6 +59,8 @@ export interface EditPlan {
   title: string;
   body: string;
   commitMessage: string;
+  /** What the edit does and why, for a direct commit's message (a PR carries it in `body`). */
+  details?: string[];
 }
 
 function assertWritablePage(brain: BrainRow, page: string): void {
@@ -187,6 +189,7 @@ export async function commitDirect(
   const message = [
     plan.commitMessage,
     '',
+    ...(plan.details?.length ? [...plan.details, ''] : []),
     `Committed directly by brain-mcp for ${author.caller}${author.agent ? ` via ${author.agent}` : ''}.`,
   ].join('\n');
 
@@ -225,6 +228,6 @@ export async function commitDirect(
   return {
     mode: 'pull_request',
     pullRequest,
-    fallbackReason: `${plan.page} kept changing on ${branch} while committing, so this opened a pull request instead.`,
+    fallbackReason: `GitHub refused the commit to ${branch} twice (the page changed meanwhile, or a branch rule blocks direct pushes), so this opened a pull request instead.`,
   };
 }

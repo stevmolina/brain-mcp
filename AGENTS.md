@@ -15,7 +15,8 @@ names, no fixed page names and no house conventions.
    in markdown instead, not here.
 3. **Writes produce a pull request, unless the owner opted in.** A brain whose
    profile sets `directWrites: true` lets its owner (the registered WorkOS user
-   or GitHub login) commit straight to the default branch; everyone else, and
+   or GitHub login, whose own login GitHub says can push right now) commit
+   straight to the default branch; everyone else, and
    every brain without the switch, gets a branch and a pull request. A direct
    write is one contents commit guarded by the page's blob sha; on a conflict it
    re-applies once, then falls back to a PR. No merge call belongs in this

@@ -110,6 +110,11 @@ export async function canReadBrain(brain: BrainRow, githubLogin: string | null):
 export async function canWriteBrain(brain: BrainRow, githubLogin: string | null): Promise<boolean> {
   if (!githubLogin) return false;
   if (githubLogin.toLowerCase() === brain.owner_github_login.toLowerCase()) return true;
+  return githubSaysCanPush(brain, githubLogin);
+}
+
+/** The push question put to GitHub itself, with no owner shortcut. */
+async function githubSaysCanPush(brain: BrainRow, githubLogin: string): Promise<boolean> {
   if (!brain.installation_id) return false;
 
   const key = `${brain.id}::${githubLogin.toLowerCase()}`;
@@ -214,12 +219,20 @@ export function isBrainOwner(brain: BrainRow, workosUserId: string, githubLogin:
 
 /**
  * May this write skip the pull request and commit straight to the default
- * branch? Only when the brain's profile turns direct writes on and the caller
- * is its owner. The owner passes the push check by definition (canWriteBrain
- * says so without asking GitHub). Anything else gets a pull request.
+ * branch? Only when the brain's profile turns direct writes on, the caller is
+ * its owner, and GitHub itself says the caller's own login can push right now.
+ * The last check skips the owner shortcut on purpose: the owner columns are a
+ * registration-time snapshot, and an unreviewed commit to main should rest on
+ * what GitHub says today. Anything else gets a pull request.
  */
-export function directWriteAllowed(brain: BrainRow, workosUserId: string, githubLogin: string | null): boolean {
-  return resolveProfile(brain.profile).directWrites && isBrainOwner(brain, workosUserId, githubLogin);
+export async function directWriteAllowed(
+  brain: BrainRow,
+  workosUserId: string,
+  githubLogin: string | null,
+): Promise<boolean> {
+  if (!resolveProfile(brain.profile).directWrites) return false;
+  if (!githubLogin || !isBrainOwner(brain, workosUserId, githubLogin)) return false;
+  return githubSaysCanPush(brain, githubLogin);
 }
 
 /** Clears the caches. Used by offboarding, so revocation is immediate. */

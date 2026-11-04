@@ -39,11 +39,9 @@ export async function landEdit(
 ): Promise<WriteResult> {
   // Ask WorkOS for the login only when the switch is on; a PR needs no identity.
   if (resolveProfile(brain.profile).directWrites) {
-    const login = brain.owner_workos_user_id === caller.workosUserId
-      ? brain.owner_github_login
-      : await githubLoginForWorkosUser(caller.workosUserId);
-    if (directWriteAllowed(brain, caller.workosUserId, login)) {
-      return commitDirect(brain, plan, { caller: login ?? caller.workosUserId, agent: caller.agent });
+    const login = await githubLoginForWorkosUser(caller.workosUserId);
+    if (login && (await directWriteAllowed(brain, caller.workosUserId, login))) {
+      return commitDirect(brain, plan, { caller: login, agent: caller.agent });
     }
   }
   return { mode: 'pull_request', pullRequest: await openPullRequest(brain, plan) };
@@ -130,7 +128,7 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
           branchPrefix: 'brain/remember',
           commitMessage: `brain: remember a claim in ${page}`,
           title: `Remember: ${truncate(args.text)}`,
-          body: prBody(brain.id, [
+          ...described(brain.id, [
             `Adds one claim to \`${page}\` under **${heading}**.`,
             args.authority ? `Authority \`${args.authority}\`, verified \`${verifiedAt}\`.` : 'Unmarked, so durable.',
           ]),
@@ -183,7 +181,7 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
           branchPrefix: 'brain/update',
           commitMessage: `brain: update a claim in ${claim.page_path}`,
           title: `Update: ${truncate(newText)}`,
-          body: prBody(brain.id, [
+          ...described(brain.id, [
             `Replaces claim \`${claim.id.slice(0, 12)}\` in \`${claim.page_path}\`.`,
             '',
             `Was: ${claim.text}`,
@@ -245,7 +243,7 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
           branchPrefix: 'brain/forget',
           commitMessage: `brain: forget a claim in ${claim.page_path}`,
           title: `Forget: ${truncate(claim.text)}`,
-          body: prBody(brain.id, [
+          ...described(brain.id, [
             `Removes claim \`${claim.id.slice(0, 12)}\` from \`${claim.page_path}\`.`,
             '',
             `Claim: ${claim.text}`,
@@ -286,11 +284,15 @@ function truncate(text: string, max = 68): string {
   return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
 }
 
-function prBody(brainId: string, lines: string[]): string {
-  return [
-    ...lines,
-    '',
-    '---',
-    `Opened by brain-mcp for the \`${brainId}\` brain. Review and merge; the index rebuilds from the merged commit.`,
-  ].join('\n');
+/** The same explanation for both paths: the PR body, and the direct commit's message body. */
+function described(brainId: string, lines: string[]): { body: string; details: string[] } {
+  return {
+    details: lines,
+    body: [
+      ...lines,
+      '',
+      '---',
+      `Opened by brain-mcp for the \`${brainId}\` brain. Review and merge; the index rebuilds from the merged commit.`,
+    ].join('\n'),
+  };
 }
