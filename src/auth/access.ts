@@ -10,6 +10,7 @@
 import { loadConfig } from '../config.js';
 import { db } from '../db/client.js';
 import { appOctokit, githubLoginForAccountId, installationOctokit } from '../github/app.js';
+import { resolveProfile } from '../profiles/index.js';
 import { ToolRefusal } from '../tools/shared.js';
 import type { BrainRow } from '../types.js';
 
@@ -199,6 +200,26 @@ export async function requireBrainWriter(workosUserId: string, requested?: strin
   const login = await githubLoginForWorkosUser(workosUserId);
   if (await canWriteBrain(brain, login)) return brain;
   throw new Forbidden(`You can read ${brain.id} but not write to it: adding files needs push access to its repo.`);
+}
+
+/**
+ * Is this caller the brain's owner? The registered WorkOS user, or the GitHub
+ * login the brain was registered under (case-insensitive), the same two ways
+ * the read and write checks above recognise an owner.
+ */
+export function isBrainOwner(brain: BrainRow, workosUserId: string, githubLogin: string | null): boolean {
+  if (brain.owner_workos_user_id === workosUserId) return true;
+  return !!githubLogin && githubLogin.toLowerCase() === brain.owner_github_login.toLowerCase();
+}
+
+/**
+ * May this write skip the pull request and commit straight to the default
+ * branch? Only when the brain's profile turns direct writes on and the caller
+ * is its owner. The owner passes the push check by definition (canWriteBrain
+ * says so without asking GitHub). Anything else gets a pull request.
+ */
+export function directWriteAllowed(brain: BrainRow, workosUserId: string, githubLogin: string | null): boolean {
+  return resolveProfile(brain.profile).directWrites && isBrainOwner(brain, workosUserId, githubLogin);
 }
 
 /** Clears the caches. Used by offboarding, so revocation is immediate. */

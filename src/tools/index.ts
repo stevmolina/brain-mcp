@@ -32,7 +32,7 @@ export function serverInstructions(withFiles: boolean): string {
     );
   }
   lines.push(
-    '- When a durable decision or fact is settled in the conversation, propose it with remember. Tell the user it opens a pull request on the brain repo and nothing changes until a person merges it. Use update_fact or forget for an outdated claim.',
+    '- When a durable decision or fact is settled in the conversation, record it with remember; use update_fact or forget for an outdated claim. A write opens a pull request a person merges, or commits directly when the owner turned direct writes on. Tell the user which the result says.',
     '',
     'Pick the brain by the project or client the user names. If several match, say which one you used.',
     '',
@@ -44,7 +44,8 @@ export function serverInstructions(withFiles: boolean): string {
 
 /**
  * Six claim tools: search, get_claim, explain_claim, remember, update_fact,
- * forget. Read and write both. The pull-request gate is what makes writing safe.
+ * forget. Read and write both. The pull-request gate is what makes writing safe;
+ * a brain's owner can turn it off for their own writes (profile directWrites).
  *
  * Plus three file tools (list_files, get_file, add_file) when R2 is configured.
  * File adds are not git writes: they are add-only instead of reviewed.

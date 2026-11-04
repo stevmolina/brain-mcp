@@ -12,12 +12,14 @@ INDEXER                       -- full rebuild per push, no incremental diffing
      |
 NEON                          -- searchable copy; drop it, rebuild it, lose nothing
      |
-MCP SERVER                    -- reads from Neon, writes to git as a branch + PR
+MCP SERVER                    -- reads from Neon, writes to git (a PR, or a direct commit for an opted-in owner)
 ```
 
 Reads come from the copy because it's fast. Writes go to the truth because it's
-reviewable: every write opens a pull request, never a merge, and never touches a
-brain's `sources/`.
+reviewable: a write opens a pull request, never a merge, and never touches a
+brain's `sources/`. The one exception is opt-in: a brain whose profile sets
+`directWrites: true` lets its owner commit straight to the default branch. Everyone
+else still gets a pull request.
 
 Seven tools: `list_brains`, `search`, `get_claim`, `explain_claim`, `remember`,
 `update_fact`, `forget`. Every returned claim carries where it came from, when it was verified,
@@ -45,9 +47,10 @@ names, descriptions and schemas.
 - **Before asking for a file**, it looks with `list_files` and `get_file`.
 - **When a file worth keeping** is shared or produced, it stores it with
   `add_file`, named date first (`inputs/2026-09-01-report.xlsx`), without asking.
-- **When a decision is settled**, it proposes it with `remember` and tells the user
-  that this opens a pull request a person merges. `update_fact` and `forget` do
-  the same for claims that are out of date.
+- **When a decision is settled**, it records it with `remember` and tells the user
+  what the result says: a pull request a person merges, or, for an owner with
+  direct writes on, a commit already on the default branch. `update_fact` and
+  `forget` do the same for claims that are out of date.
 - It picks the brain by the project or client the user names, and says which one
   it used when several match.
 

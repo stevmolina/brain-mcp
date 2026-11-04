@@ -13,9 +13,14 @@ names, no fixed page names and no house conventions.
 2. **The database is always rebuildable from git.** Every row in Neon is derived.
    The test for a new column: if it cannot be regenerated from a commit, it belongs
    in markdown instead, not here.
-3. **Writes only ever produce a pull request.** No merge call belongs in this
-   codebase. Nothing writes to a brain's `sources/`. A new row appears only after
-   the indexer reprocesses the merged commit.
+3. **Writes produce a pull request, unless the owner opted in.** A brain whose
+   profile sets `directWrites: true` lets its owner (the registered WorkOS user
+   or GitHub login) commit straight to the default branch; everyone else, and
+   every brain without the switch, gets a branch and a pull request. A direct
+   write is one contents commit guarded by the page's blob sha; on a conflict it
+   re-applies once, then falls back to a PR. No merge call belongs in this
+   codebase. Nothing writes to a brain's `sources/`, in either mode. A new row
+   appears only after the indexer reprocesses the commit on the default branch.
    File adds (`add_file`, `pnpm upload-files`) are not git writes: they go to R2,
    not the repo, and are add-only instead of reviewed. See Files below.
 
@@ -29,6 +34,7 @@ INDEXER   src/indexer/        -- parses claims; full rebuild per push, no diffin
 NEON      db/migrations/      -- searchable copy; drop it, rebuild it, lose nothing
      |
 MCP       src/index.ts        -- reads from Neon, writes to git as a branch + PR
+                                 (or a direct commit for an opted-in owner)
 ```
 
 The asymmetry is the design: reads come from the copy because it's fast, writes go
@@ -37,7 +43,8 @@ to the truth because it's reviewable.
 ## Claim format
 
 Two fields, deliberately minimal. No `profile.yaml` in a tenant repo until a real
-failure demands one; per-brain settings live on the `brains` row.
+failure demands one; per-brain settings live on the `brains` row (`profile`
+jsonb, e.g. `{"directWrites": true}`; only a literal `true` turns that on).
 
 ```markdown
 - Production runs in the client's Vercel account.

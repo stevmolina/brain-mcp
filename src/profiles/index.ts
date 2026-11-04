@@ -20,6 +20,12 @@ export interface BrainProfile {
   writeHeading: string;
   /** Days after which an `authority: live` claim is reported stale by the reconciler. */
   staleLiveDays: number;
+  /**
+   * When true, the brain's owner writes straight to the default branch instead of
+   * opening a pull request. Everyone else still gets a pull request. Off unless
+   * the stored profile says exactly `true`.
+   */
+  directWrites: boolean;
 }
 
 export const DEFAULT_PROFILE: BrainProfile = {
@@ -34,11 +40,15 @@ export const DEFAULT_PROFILE: BrainProfile = {
   writePage: 'wiki/index.md',
   writeHeading: 'Claims',
   staleLiveDays: 90,
+  directWrites: false,
 };
 
 export function resolveProfile(stored: unknown): BrainProfile {
   const overrides = (stored && typeof stored === 'object' ? stored : {}) as Partial<BrainProfile>;
   const profile: BrainProfile = { ...DEFAULT_PROFILE, ...overrides };
+  // A switch that changes who can write to main: only a literal true turns it on,
+  // so a stray "false" string or 1 in the jsonb never does.
+  profile.directWrites = overrides.directWrites === true;
 
   // sources/ is evidence, not claims. The exclusion is structural, not configurable:
   // the write path must never be able to reach it either.
