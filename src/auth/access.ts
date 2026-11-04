@@ -10,6 +10,7 @@
 import { loadConfig } from '../config.js';
 import { db } from '../db/client.js';
 import { appOctokit, githubLoginForAccountId, installationOctokit } from '../github/app.js';
+import { resolveProfile } from '../profiles/index.js';
 import { ToolRefusal } from '../tools/shared.js';
 import type { BrainRow } from '../types.js';
 
@@ -109,6 +110,11 @@ export async function canReadBrain(brain: BrainRow, githubLogin: string | null):
 export async function canWriteBrain(brain: BrainRow, githubLogin: string | null): Promise<boolean> {
   if (!githubLogin) return false;
   if (githubLogin.toLowerCase() === brain.owner_github_login.toLowerCase()) return true;
+  return githubSaysCanPush(brain, githubLogin);
+}
+
+/** The push question put to GitHub itself, with no owner shortcut. */
+async function githubSaysCanPush(brain: BrainRow, githubLogin: string): Promise<boolean> {
   if (!brain.installation_id) return false;
 
   const key = `${brain.id}::${githubLogin.toLowerCase()}`;
@@ -199,6 +205,34 @@ export async function requireBrainWriter(workosUserId: string, requested?: strin
   const login = await githubLoginForWorkosUser(workosUserId);
   if (await canWriteBrain(brain, login)) return brain;
   throw new Forbidden(`You can read ${brain.id} but not write to it: adding files needs push access to its repo.`);
+}
+
+/**
+ * Is this caller the brain's owner? The registered WorkOS user, or the GitHub
+ * login the brain was registered under (case-insensitive), the same two ways
+ * the read and write checks above recognise an owner.
+ */
+export function isBrainOwner(brain: BrainRow, workosUserId: string, githubLogin: string | null): boolean {
+  if (brain.owner_workos_user_id === workosUserId) return true;
+  return !!githubLogin && githubLogin.toLowerCase() === brain.owner_github_login.toLowerCase();
+}
+
+/**
+ * May this write skip the pull request and commit straight to the default
+ * branch? Only when the brain's profile turns direct writes on, the caller is
+ * its owner, and GitHub itself says the caller's own login can push right now.
+ * The last check skips the owner shortcut on purpose: the owner columns are a
+ * registration-time snapshot, and an unreviewed commit to main should rest on
+ * what GitHub says today. Anything else gets a pull request.
+ */
+export async function directWriteAllowed(
+  brain: BrainRow,
+  workosUserId: string,
+  githubLogin: string | null,
+): Promise<boolean> {
+  if (!resolveProfile(brain.profile).directWrites) return false;
+  if (!githubLogin || !isBrainOwner(brain, workosUserId, githubLogin)) return false;
+  return githubSaysCanPush(brain, githubLogin);
 }
 
 /** Clears the caches. Used by offboarding, so revocation is immediate. */
