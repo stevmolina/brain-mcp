@@ -39,7 +39,13 @@ export async function landEdit(
 ): Promise<WriteResult> {
   // Ask WorkOS for the login only when the switch is on; a PR needs no identity.
   if (resolveProfile(brain.profile).directWrites) {
-    const login = await githubLoginForWorkosUser(caller.workosUserId);
+    // A failed lookup must not fail the write: no login just means a pull request.
+    const login = await githubLoginForWorkosUser(caller.workosUserId).catch((error: unknown) => {
+      console.error(
+        JSON.stringify({ level: 'warn', at: 'write.landEdit', brain: brain.id, message: `identity lookup failed: ${String(error)}` }),
+      );
+      return null;
+    });
     if (login && (await directWriteAllowed(brain, caller.workosUserId, login))) {
       return commitDirect(brain, plan, { caller: login, agent: caller.agent });
     }

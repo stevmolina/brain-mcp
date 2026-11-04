@@ -269,6 +269,15 @@ describe('landEdit', () => {
     expect(mainPuts()).toHaveLength(0);
   });
 
+  it('an identity lookup that throws falls back to a pull request, not an error', async () => {
+    fakeGitHub();
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network down'); }));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const result = await landEdit(brainWith({ directWrites: true }), plan(), { workosUserId: OWNER });
+    expect(result.mode).toBe('pull_request');
+    expect(mainPuts()).toHaveLength(0);
+  });
+
   it('a conflict re-reads the page and retries once', async () => {
     let n = 0;
     fakeGitHub(() => (++n === 1 ? conflict() : { data: { commit: { sha: 'second', html_url: 'u' } } }));
