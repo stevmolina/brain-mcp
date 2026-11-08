@@ -38,6 +38,7 @@
 }
 
 * { box-sizing: border-box; margin: 0; }
+[hidden] { display: none !important; }
 
 body {
   color: var(--ink);
