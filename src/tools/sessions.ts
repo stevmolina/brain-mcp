@@ -119,8 +119,7 @@ export function registerSessionTools(server: McpServer): void {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     handling(async (args, mcp) => {
-      const { userId } = await callerOf(mcp);
-      const hits = await searchSessions(userId, args);
+      const hits = await searchSessions(workosUserId(mcp.http?.authInfo), args);
       const header = `${hits.length} of your chat${hits.length === 1 ? '' : 's'}${args.query ? ` for "${args.query}"` : ', most recent first'}`;
       const body = hits.length ? hits.map(renderSummary).join('\n') : 'No matching chats.';
       return textResult(`${header}\n\n${body}\n\nOpen one with show_session.`, { sessions: hits });
@@ -204,7 +203,7 @@ export function registerSessionTools(server: McpServer): void {
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
     handling(async (args, mcp) => {
-      const { userId } = await callerOf(mcp);
+      const userId = workosUserId(mcp.http?.authInfo);
       try {
         const plan = await planShare(userId, {
           session: args.session,
@@ -246,7 +245,7 @@ export function registerSessionTools(server: McpServer): void {
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     },
     handling(async (args, mcp) => {
-      const { userId } = await callerOf(mcp);
+      const userId = workosUserId(mcp.http?.authInfo);
       const done = await revokeShare(userId, args.share);
       return done
         ? textResult(`Revoked share ${args.share}. The link no longer opens.`, { revoked: true })
@@ -263,7 +262,7 @@ export function registerSessionTools(server: McpServer): void {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     handling(async (_args, mcp) => {
-      const { userId } = await callerOf(mcp);
+      const userId = workosUserId(mcp.http?.authInfo);
       const shares = await listMyShares(userId);
       return textResult(shares.length ? shares.map(renderShare).join('\n') : 'You have not shared any chats.', { shares });
     }),
@@ -276,7 +275,7 @@ export function registerSessionTools(server: McpServer): void {
       description:
         'When a chat settled a durable decision or fact, record it in the project\'s brain as a claim that cites the chat. ' +
         'Write the claim as one plain sentence. Goes through the same path as remember: a pull request, or a direct commit for an owner with direct writes on; the result says which. ' +
-        'The brain defaults to the one the chat is tagged with.',
+        'Only for your own chats. The brain defaults to the one the chat is tagged with.',
       inputSchema: z.object({
         session: sessionArg,
         source: sourceArg,
@@ -294,6 +293,9 @@ export function registerSessionTools(server: McpServer): void {
       try {
         const opened = await openSession(caller, args, { from: args.turn, max: 1 });
         if (!opened) return errorResult(`No chat ${args.session} is available to you.`);
+        // The claim names the chat in a commit the whole brain team reads, so
+        // only the chat's owner may do it.
+        if (opened.access !== 'owner') return errorResult('Only the owner of a chat can save it to a brain. Use remember instead.');
         if (args.turn && (args.turn < opened.allowed.from || args.turn > opened.allowed.to)) {
           return errorResult(`turn must be between ${opened.allowed.from} and ${opened.allowed.to}.`);
         }

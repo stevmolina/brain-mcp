@@ -123,33 +123,40 @@ const SUMMARY_COLUMNS = `s.source, s.id, s.provider, s.title, s.brain, s.cwd, s.
 export async function searchSessions(ownerId: string, options: SearchOptions): Promise<SessionSummary[]> {
   const query = options.query?.trim() ?? '';
   const limit = Math.min(Math.max(options.limit ?? 20, 1), 100);
-  const { rows } = await sessionsDb().query<SummaryRow>(
-    `with q as (select case when $2 = '' then null else websearch_to_tsquery('english', $2) end as tsq),
-     hits as (
+  const filters = `s.owner = $1
+          and ($2::text is null or s.brain = $2)
+          and ($3::text is null or s.source = $3 or s.provider = $3)
+          and ($4::timestamptz is null or coalesce(s.updated_at, s.started_at) >= $4)
+          and ($5::timestamptz is null or coalesce(s.started_at, s.updated_at) < $5)`;
+  const args = [ownerId, options.brain || null, options.tool || null, options.since || null, endOfDay(options.until), limit];
+
+  // Two plans on purpose. The page is picked from narrow columns only; the
+  // turn count, title and snippet are read for that page alone, because they
+  // unpack the turns and body (up to a quarter of a megabyte per chat).
+  const sql = query
+    ? `with hits as (
+         select s.source, s.id, ts_rank(s.search, websearch_to_tsquery('english', $7)) as rank,
+                coalesce(s.updated_at, s.started_at) as at
+           from sessions s
+          where ${filters} and s.search @@ websearch_to_tsquery('english', $7)
+          order by rank desc, at desc nulls last
+          limit $6)
        select ${SUMMARY_COLUMNS},
-              case when q.tsq is null then 0 else ts_rank(s.search, q.tsq) end as rank
-         from sessions s, q
-        where s.owner = $1
-          and (q.tsq is null or s.search @@ q.tsq)
-          and ($3::text is null or s.brain = $3)
-          and ($4::text is null or s.source = $4 or s.provider = $4)
-          and ($5::timestamptz is null or coalesce(s.updated_at, s.started_at) >= $5)
-          and ($6::timestamptz is null or coalesce(s.started_at, s.updated_at) < $6)
-        order by rank desc, coalesce(s.updated_at, s.started_at) desc nulls last
-        limit $7
-     )
-     select h.*,
-            case when q.tsq is null
-                 then left(coalesce((select t->>'text' from jsonb_array_elements(s.turns) t
-                                      where t->>'role' = 'user' limit 1), ''), 240)
-                 else ts_headline('english', s.body, q.tsq, 'MaxWords=30, MinWords=10, MaxFragments=2')
-            end as snippet
-       from hits h
-       join sessions s on s.source = h.source and s.id = h.id and s.owner = $1
-       cross join q
-      order by h.rank desc, coalesce(h.updated_at, h.started_at) desc nulls last`,
-    [ownerId, query, options.brain || null, options.tool || null, options.since || null, endOfDay(options.until), limit],
-  );
+              ts_headline('english', s.body, websearch_to_tsquery('english', $7), 'MaxWords=30, MinWords=10, MaxFragments=2') as snippet
+         from hits h join sessions s on s.source = h.source and s.id = h.id and s.owner = $1
+        order by h.rank desc, h.at desc nulls last`
+    : `with hits as (
+         select s.source, s.id, coalesce(s.updated_at, s.started_at) as at
+           from sessions s
+          where ${filters}
+          order by at desc nulls last
+          limit $6)
+       select ${SUMMARY_COLUMNS},
+              left(coalesce((select t->>'text' from jsonb_array_elements(s.turns) t
+                              where t->>'role' = 'user' limit 1), ''), 240) as snippet
+         from hits h join sessions s on s.source = h.source and s.id = h.id and s.owner = $1
+        order by h.at desc nulls last`;
+  const { rows } = await sessionsDb().query<SummaryRow>(sql, query ? [...args, query] : args);
   return rows.map(toSummary);
 }
 
@@ -305,6 +312,12 @@ export async function openSession(
     const grant = await findGrant(caller.email, ref);
     if (!grant) return null;
     summary = toSummary(grant.session);
+    // A chat's title is usually its first prompt, and cwd is the owner's own
+    // path: a share that starts after turn 1 shows neither.
+    if ((grant.share.turn_from ?? 1) > 1) {
+      summary = { ...summary, title: `Part of a chat (turns ${grant.share.turn_from} to ${grant.share.turn_to ?? summary.turn_count})` };
+    }
+    summary = { ...summary, cwd: null };
     share = { ...toShare(grant.share), title: summary.title };
     ownerId = grant.share.owner;
   }
@@ -434,7 +447,9 @@ export function describePlan(plan: SharePlan): string {
     `Starts with: ${excerpt(plan.first) ?? '(empty)'}`,
     ...(plan.last ? [`Ends with: ${excerpt(plan.last)}`] : []),
     '',
-    'They read the cleaned text (secrets redacted), after signing in as that email. Nothing else of yours becomes visible.',
+    plan.turnFrom && plan.turnFrom > 1
+      ? 'They read only these turns, cleaned (secrets redacted), after signing in as that email. The chat title is hidden from them.'
+      : 'They read the chat title and these turns, cleaned (secrets redacted), after signing in as that email. Nothing else of yours becomes visible.',
   ].join('\n');
 }
 

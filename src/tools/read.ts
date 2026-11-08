@@ -63,10 +63,16 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
       let chats: SessionSummary[] | undefined;
       let chatSection = '';
       if (args.include_sessions && sessionsEnabled()) {
-        chats = await searchSessions(workosUserId(mcp.http?.authInfo), { query: args.query, brain: brain.id, limit: 5 });
-        chatSection = `\n\nYour own chats in ${brain.id} (private to you, not brain claims):\n${
-          chats.length ? chats.map(renderSummary).join('\n') : 'No matching chats.'
-        }`;
+        // A sessions outage must not take brain search down with it.
+        try {
+          chats = await searchSessions(workosUserId(mcp.http?.authInfo), { query: args.query, brain: brain.id, limit: 5 });
+          chatSection = `\n\nYour own chats in ${brain.id} (private to you, not brain claims):\n${
+            chats.length ? chats.map(renderSummary).join('\n') : 'No matching chats.'
+          }`;
+        } catch (error) {
+          console.error(JSON.stringify({ level: 'warn', at: 'search.sessions', message: String(error) }));
+          chatSection = '\n\nYour chats are unavailable right now; the claims above are complete.';
+        }
       }
       return textResult(`${header}\n\n${body}${chatSection}`, {
         brain: brain.id,

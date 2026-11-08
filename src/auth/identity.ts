@@ -23,6 +23,7 @@ export async function workosProfile(userId: string): Promise<WorkosProfile | nul
   try {
     const response = await fetch(`https://api.workos.com/user_management/users/${encodeURIComponent(userId)}`, {
       headers: { Authorization: `Bearer ${workosApiKey}` },
+      signal: AbortSignal.timeout(5_000),
     });
     if (response.ok) {
       const user = (await response.json()) as {

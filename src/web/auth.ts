@@ -171,8 +171,11 @@ export function mountAuthRoutes(app: express.Express, web: WebConfig, verifier: 
   });
 
   app.post('/logout', (req, res) => {
+    if (req.headers.origin && req.headers.origin !== web.publicOrigin) {
+      res.status(403).type('text/plain').send('cross-origin request refused');
+      return;
+    }
     setCookie(res, web, SESSION_COOKIE, '', 0);
     res.redirect(303, '/');
-    void req;
   });
 }

@@ -117,6 +117,9 @@ describe('after Alice shares turns 2 to 3 of one chat with Bob', () => {
       expect(opened?.access).toBe('shared');
       expect(opened?.share?.id).toBe(shareId);
       expect(opened?.allowed).toEqual({ from: 2, to: 3 });
+      // Turn 1 is outside the share, so the title (usually the first prompt) and cwd are hidden.
+      expect(opened?.title).toBe('Part of a chat (turns 2 to 3)');
+      expect(opened?.cwd).toBeNull();
       expect(opened?.turns.map((t) => t.text)).toEqual([
         'Run pelican in Frankfurt, close to the data.',
         'Agreed, Frankfurt it is. Budget is 4200 per month.',

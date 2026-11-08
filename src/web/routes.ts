@@ -36,7 +36,7 @@ const str = (value: unknown): string | undefined => (typeof value === 'string' &
 const int = (value: unknown): number | undefined => {
   if (value === undefined || value === null || value === '') return undefined;
   const n = Number(value);
-  return Number.isInteger(n) ? n : undefined;
+  return Number.isInteger(n) && n >= 0 && n <= 1_000_000 ? n : undefined;
 };
 
 export function mountWeb(app: express.Express, web: WebConfig, verifier: OAuthTokenVerifier, siteRoot: string): void {
