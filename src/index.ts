@@ -23,12 +23,14 @@ import {
   requireBearerAuth,
 } from '@modelcontextprotocol/express';
 import { NodeStreamableHTTPServerTransport } from '@modelcontextprotocol/node';
-import { loadConfig } from './config.js';
+import { loadConfig, loadWebConfig } from './config.js';
 import { authorizationServerMetadata, createTokenVerifier } from './auth/workos.js';
 import { Forbidden } from './auth/access.js';
 import { handleGithubWebhook } from './github/webhook.js';
 import { buildServer } from './tools/index.js';
 import { db } from './db/client.js';
+import { sessionsEnabled } from './sessions/db.js';
+import { mountWeb } from './web/routes.js';
 
 const VERSION = '0.1.0';
 
@@ -101,8 +103,9 @@ export async function createApp(): Promise<express.Express> {
     }),
   );
 
+  const tokenVerifier = createTokenVerifier();
   const bearer = requireBearerAuth({
-    verifier: createTokenVerifier(),
+    verifier: tokenVerifier,
     resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(resourceUrl),
   });
 
@@ -132,6 +135,12 @@ export async function createApp(): Promise<express.Express> {
   app.get(resourceUrl.pathname, bearer, (_req, res) => {
     res.status(405).json({ error: 'Streamable HTTP: POST to this endpoint' });
   });
+
+  // The web pages: your chats, and chats shared with you. Same AuthKit login,
+  // as a browser client. Only when the sessions database and a cookie secret
+  // are both configured; otherwise the server is exactly as before.
+  const web = loadWebConfig();
+  if (web && sessionsEnabled()) mountWeb(app, web, tokenVerifier, landingRoot());
 
   // After every API and discovery route, so a file in site/ cannot shadow
   // /mcp, /healthz, /readyz, /webhooks/github, or the OAuth documents.

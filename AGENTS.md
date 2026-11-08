@@ -25,6 +25,13 @@ names, no fixed page names and no house conventions.
    File adds (`add_file`, `pnpm upload-files`) are not git writes: they go to R2,
    not the repo, and are add-only instead of reviewed. See Files below.
 
+4. **Chats are private to their owner.** Brains are shared and follow GitHub.
+   Sessions (a person's agent chats) belong to one person: a session row is
+   returned only when `owner = caller`, or when an active share grants the
+   caller's verified email that chat. All of it lives in
+   `src/sessions/store.ts`; `test/sessions-isolation.test.ts` and
+   `test/web.test.ts` hold it. Keep them passing.
+
 ## Shape
 
 ```
@@ -107,6 +114,36 @@ by the service, never in the brain repo and never in Neon.
   `R2_ENDPOINT` optionally points at a local S3-compatible server in development.
 - `test/files.test.ts` fakes the bucket in memory and asks for brain-A files while
   scoped to brain-B. Keep it passing alongside `test/isolation.test.ts`.
+
+## Sessions
+
+The second store. The `sessions` CLI (repo `stevmolina/agent-sessions`) cleans
+each person's Claude Code, Codex, Cursor and T3 chats, plus imported ChatGPT,
+Claude.ai and Grok exports, and pushes them to its own Postgres. Each row
+carries `owner` (the pusher's WorkOS user id) and `brain` (a brain id derived
+from the folder the chat ran in). brain-mcp reads that database through
+`SESSIONS_DATABASE_URL`, as a role that can SELECT `sessions` and owns the
+`brain_mcp` schema there, which holds share grants (`db/sessions-migrations`,
+applied by `pnpm migrate`).
+
+It is a separate database on purpose: the brain database is derived from git
+(rule 2), chats and shares are not.
+
+- Tools: `search_sessions`, `show_session`, `save_to_brain` (a claim citing the
+  chat, through the same write path as `remember`), `share_session` (preview
+  unless `confirm`), `revoke_share`, `list_my_shares`, `list_shared_with_me`.
+  `search` takes `include_sessions` to add the caller's own chats for that
+  brain, in their own labeled section.
+- A share is one chat, or a turn range, for one email, 30 days by default.
+  Its id is the link `/s/<id>`, but the link alone grants nothing: the reader
+  signs in, and WorkOS must have verified that email.
+- Web: `/sessions` (search, filters, share, revoke) and `/s/<id>`. The browser
+  signs in through the same AuthKit as a CIMD client
+  (`/oauth/client-metadata.json`), the token is verified like an MCP token and
+  dropped, and a cookie signed with `WEB_SESSION_SECRET` holds the user id.
+- Without `SESSIONS_DATABASE_URL` the tools are not registered; without
+  `WEB_SESSION_SECRET` (32+ chars) the pages are not mounted. Tests point
+  `SESSIONS_DATABASE_URL` at `DATABASE_URL` and create a fixture `sessions` table.
 
 ## Running
 

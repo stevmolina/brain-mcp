@@ -86,3 +86,37 @@ export function loadR2Config(env: NodeJS.ProcessEnv = process.env): R2Config | n
   if (!accountId || !accessKeyId || !secretAccessKey || !bucket) return null;
   return { accountId, accessKeyId, secretAccessKey, bucket, ...(env.R2_ENDPOINT ? { endpoint: env.R2_ENDPOINT } : {}) };
 }
+
+/**
+ * The sessions store: each person's cleaned agent chats, pushed by the
+ * `sessions` CLI into their own Postgres database. It is a second database on
+ * purpose. The brain database is derived from git and can be dropped and
+ * rebuilt; chats and share grants cannot, so they never live in it.
+ *
+ * Optional, like R2: with no SESSIONS_DATABASE_URL the session tools and the
+ * web pages are not registered and the server still starts.
+ */
+export interface SessionsConfig {
+  databaseUrl: string;
+}
+
+export function loadSessionsConfig(env: NodeJS.ProcessEnv = process.env): SessionsConfig | null {
+  const databaseUrl = env.SESSIONS_DATABASE_URL;
+  return databaseUrl ? { databaseUrl } : null;
+}
+
+/**
+ * The browser side: a signed cookie after an AuthKit login. Needs its own
+ * secret; without one the web pages are not mounted.
+ */
+export interface WebConfig {
+  sessionSecret: string;
+  /** The public origin, e.g. https://brain.mcpbox.dev, from MCP_RESOURCE_URL. */
+  publicOrigin: string;
+}
+
+export function loadWebConfig(env: NodeJS.ProcessEnv = process.env): WebConfig | null {
+  const secret = env.WEB_SESSION_SECRET;
+  if (!secret || secret.length < 32) return null;
+  return { sessionSecret: secret, publicOrigin: new URL(loadConfig().mcpResourceUrl).origin };
+}

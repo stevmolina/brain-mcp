@@ -13,6 +13,9 @@ import { isoDay } from '../dates.js';
 import { brainArg, handling, renderClaimLine, textResult, toClaimView } from './shared.js';
 import type { ClaimRow, SourceRow } from '../types.js';
 import type { ToolContext } from './index.js';
+import { sessionsEnabled } from '../sessions/db.js';
+import { searchSessions, type SessionSummary } from '../sessions/store.js';
+import { renderSummary } from './sessions.js';
 
 export function registerReadTools(server: McpServer, ctx: ToolContext): void {
   server.registerTool(
@@ -31,6 +34,10 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
           .boolean()
           .default(false)
           .describe('Include claims a later claim has replaced.'),
+        include_sessions: z
+          .boolean()
+          .default(false)
+          .describe('Also search your own chats tagged with this brain. They are private to you and labeled as chats, not brain claims.'),
       }),
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
@@ -50,7 +57,22 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
       const views = rows.map((row) => toClaimView(brain, row));
       const header = `${views.length} claim${views.length === 1 ? '' : 's'} in ${brain.id} for "${args.query}"`;
       const body = views.length ? views.map(renderClaimLine).join('\n') : 'No matching claims.';
-      return textResult(`${header}\n\n${body}`, { brain: brain.id, claims: views });
+
+      // The caller's own chats only, never a teammate's: the brain is shared,
+      // the chats are not. Kept in their own labeled section and field.
+      let chats: SessionSummary[] | undefined;
+      let chatSection = '';
+      if (args.include_sessions && sessionsEnabled()) {
+        chats = await searchSessions(workosUserId(mcp.http?.authInfo), { query: args.query, brain: brain.id, limit: 5 });
+        chatSection = `\n\nYour own chats in ${brain.id} (private to you, not brain claims):\n${
+          chats.length ? chats.map(renderSummary).join('\n') : 'No matching chats.'
+        }`;
+      }
+      return textResult(`${header}\n\n${body}${chatSection}`, {
+        brain: brain.id,
+        claims: views,
+        ...(chats ? { your_sessions: chats } : {}),
+      });
     }),
   );
 
