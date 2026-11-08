@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Your chats · Agent Brain</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/app.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/sessions"><span class="hw pk">Agent Brain</span></a>
+  <nav class="tabs" aria-label="Sections">
+    <a href="/sessions" data-tab="mine">My chats</a>
+    <a href="/sessions#shared" data-tab="shared">Shared with me</a>
+    <a href="/sessions#shares" data-tab="shares">My shares</a>
+  </nav>
+  <div class="me">
+    <span id="me-email" class="mono"></span>
+    <form method="post" action="/logout"><button class="link" type="submit">Sign out</button></form>
+  </div>
+</header>
+
+<main>
+  <section id="view-mine" class="view" hidden>
+    <form id="search" class="search" role="search">
+      <label class="q">
+        <span class="sr">Search your chats</span>
+        <input id="q" name="q" type="search" placeholder="Search your chats, e.g. rebate tiers" autocomplete="off">
+      </label>
+      <div class="filters">
+        <label><span>Client</span><select id="f-brain" name="brain"><option value="">All</option></select></label>
+        <label><span>Tool</span><select id="f-tool" name="tool"><option value="">All</option></select></label>
+        <label><span>From</span><input id="f-since" name="since" type="date"></label>
+        <label><span>To</span><input id="f-until" name="until" type="date"></label>
+      </div>
+      <p class="hint">Only your own chats. Nobody else can see them unless you share one.</p>
+    </form>
+    <div class="split">
+      <ol id="results" class="results" aria-live="polite"></ol>
+      <article id="detail" class="detail" hidden></article>
+    </div>
+  </section>
+
+  <section id="view-shared" class="view" hidden>
+    <h1 class="h">Shared with you</h1>
+    <p class="hint" id="shared-email"></p>
+    <ol id="shared-list" class="results"></ol>
+  </section>
+
+  <section id="view-shares" class="view" hidden>
+    <h1 class="h">Chats you shared</h1>
+    <ol id="shares-list" class="results"></ol>
+  </section>
+
+  <section id="view-share" class="view" hidden>
+    <article id="share-detail" class="detail solo"></article>
+  </section>
+</main>
+
+<dialog id="share-dialog" class="dialog">
+  <form id="share-form" method="dialog">
+    <h2 class="h2">Share this chat</h2>
+    <p class="hint" id="share-title"></p>
+    <label class="field"><span>With (email)</span><input id="s-with" type="email" required placeholder="name@company.com"></label>
+    <div class="row">
+      <label class="field"><span>From turn</span><input id="s-from" type="number" min="1" placeholder="1"></label>
+      <label class="field"><span>To turn</span><input id="s-to" type="number" min="1" placeholder="end"></label>
+      <label class="field"><span>Expires</span>
+        <select id="s-expires"><option value="7">in 7 days</option><option value="30" selected>in 30 days</option><option value="90">in 90 days</option><option value="never">never</option></select>
+      </label>
+    </div>
+    <label class="field"><span>Note (optional)</span><input id="s-note" maxlength="500" placeholder="Context for them"></label>
+    <pre id="s-preview" class="preview" hidden></pre>
+    <p id="s-error" class="error" role="alert" hidden></p>
+    <div id="s-done" class="done" hidden>
+      <p><strong>Shared.</strong> Send them this link. They sign in as that email to read it.</p>
+      <div class="copy"><input id="s-link" readonly><button type="button" id="s-copy" class="btn">Copy</button></div>
+    </div>
+    <div class="actions">
+      <button type="button" id="s-cancel" class="btn ghost">Close</button>
+      <button type="button" id="s-preview-btn" class="btn">Preview</button>
+      <button type="button" id="s-confirm" class="btn primary" disabled>Share</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="/app/app.js" type="module"></script>
+</body>
+</html>

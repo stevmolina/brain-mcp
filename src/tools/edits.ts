@@ -11,6 +11,9 @@ export interface Marker {
   authority?: string | null;
   verifiedAt?: string | null;
   supersedes?: string | null;
+  /** The chat a claim was saved from, as `source:id#turn-N`. The indexer
+   * ignores the key; it is there for a person reading the page. */
+  session?: string | null;
 }
 
 export function renderMarker(marker: Marker): string {
@@ -18,6 +21,7 @@ export function renderMarker(marker: Marker): string {
   if (marker.authority) fields.push(`authority: ${marker.authority}`);
   if (marker.verifiedAt) fields.push(`verified_at: ${marker.verifiedAt}`);
   if (marker.supersedes) fields.push(`supersedes: ${marker.supersedes}`);
+  if (marker.session) fields.push(`session: ${marker.session.replace(/[|]|-->/g, ' ')}`);
   return fields.length ? `<!-- ${fields.join(' | ')} -->` : '';
 }
 

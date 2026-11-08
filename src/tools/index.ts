@@ -3,6 +3,8 @@ import { brainFilesFromEnv } from '../files/index.js';
 import { registerBrainTools } from './brains.js';
 import { registerFileTools } from './files.js';
 import { registerReadTools } from './read.js';
+import { registerSessionTools } from './sessions.js';
+import { sessionsEnabled } from '../sessions/db.js';
 import { registerWriteTools } from './write.js';
 
 export interface ToolContext {
@@ -15,7 +17,7 @@ export interface ToolContext {
  * exists. Composio drops it, which is why every tool description repeats its
  * own trigger. The file lines appear only when the file tools are registered.
  */
-export function serverInstructions(withFiles: boolean): string {
+export function serverInstructions(withFiles: boolean, withSessions = false): string {
   const lines = [
     withFiles
       ? 'A brain is project memory: the decisions, context, people and status of one project or client, as markdown in a git repo, plus private files such as spreadsheets and PDFs.'
@@ -39,6 +41,15 @@ export function serverInstructions(withFiles: boolean): string {
     'Claims carry a page, plus an authority and verification date when set. Say when a claim is old, undated or superseded.',
   );
   if (withFiles) lines.push('Files are add-only: an existing path is refused and nothing is ever deleted.');
+  if (withSessions) {
+    lines.push(
+      '',
+      'Your chats are separate from brains and private to you: search_sessions and show_session read only your own agent chats, plus any chat someone shared with you (list_shared_with_me).',
+      '- When earlier context would help (a prior attempt, what was already tried, "we talked about this"), search_sessions first. search can include your own chats for a brain with include_sessions.',
+      '- When a chat settled a durable decision, record it with save_to_brain, which cites the chat.',
+      '- To share a chat, call share_session without confirm, show the user the preview, and confirm only after they agree.',
+    );
+  }
   return lines.join('\n');
 }
 
@@ -54,16 +65,21 @@ export function serverInstructions(withFiles: boolean): string {
  * the brain://mine resource, but Composio and many clients expose only tools,
  * and an agent that cannot see the list has to guess ids.
  *
+ * Plus seven session tools when the sessions database is configured: your own
+ * chats (search_sessions, show_session), sharing one (share_session,
+ * revoke_share, list_my_shares, list_shared_with_me), and save_to_brain.
+ *
  * A fresh server per request. Nothing about a caller's brain or identity is held
  * on the instance, so one request can never see another tenant's scope.
  */
 export function buildServer(ctx: ToolContext): McpServer {
   const files = brainFilesFromEnv();
+  const sessions = sessionsEnabled();
   const server = new McpServer(
     { name: 'brain-mcp', version: ctx.version, title: 'Remote second brain' },
     {
       capabilities: { tools: {}, resources: {} },
-      instructions: serverInstructions(files !== null),
+      instructions: serverInstructions(files !== null, sessions),
     },
   );
 
@@ -71,6 +87,7 @@ export function buildServer(ctx: ToolContext): McpServer {
   registerReadTools(server, ctx);
   registerWriteTools(server, ctx);
   if (files) registerFileTools(server, files);
+  if (sessions) registerSessionTools(server);
 
   return server;
 }
