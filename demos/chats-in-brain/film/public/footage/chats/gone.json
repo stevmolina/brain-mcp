@@ -2,15 +2,15 @@
  "width": 1600,
  "height": 900,
  "fps": 30,
- "frames": 273,
+ "frames": 127,
  "cursor": [],
  "marks": {
   "not-available": {
-   "frame": 0,
+   "frame": 43,
    "x": 350,
    "y": 87,
    "width": 900,
-   "height": 92
+   "height": 93
   }
  }
 }
