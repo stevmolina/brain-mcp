@@ -3,7 +3,8 @@ import { CHATGPT_RUN, CLAUDE_RUN, NOTE } from "./run";
 
 // "Agents share context": Claude settles something, ChatGPT picks it up, because both read the
 // same Agent Brain. Plain data (scene frames), read by Film.tsx, panels.tsx and film-plan.mjs.
-// The apps are motion-design recreations of a real run (run/), so every scene carries a note tag.
+// The apps are motion-design recreations of a real run (run/), so every scene that shows one
+// carries a note tag, in both cuts.
 
 const typeFrames = (s: string, cpf = 2.4) => Math.ceil(s.length / cpf);
 const words = (s: string) => s.split(" ").length;
@@ -65,8 +66,8 @@ export const HOWTO: FilmCut = {
   scenes: [
     { kind: "title", name: "Title", beats: 4, headline: "How to start.", highlight: ["start"], sub: "Four steps. No code." },
     { kind: "panel", name: "Link", chapter: "Step 1", panel: "stepLink", beats: 5, cues: [{ at: 46, sfx: "tick" }, { at: 50, sfx: "chime", volume: 0.16 }], caps: [] },
-    { kind: "panel", name: "Connect", chapter: "Step 2", panel: "stepConnect", beats: 6, cues: [{ at: 4, sfx: "tick", volume: 0.14 }, { at: 24, sfx: "tick", volume: 0.14 }], caps: [] },
-    { kind: "panel", name: "Sign in", chapter: "Step 3", panel: "stepSignIn", beats: 5, cues: [{ at: 50, sfx: "tick" }, { at: 56, sfx: "hit", volume: 0.2 }], caps: [] },
+    { kind: "panel", name: "Connect", chapter: "Step 2", panel: "stepConnect", beats: 6, note: "Redrawn from the real apps", cues: [{ at: 4, sfx: "tick", volume: 0.14 }, { at: 24, sfx: "tick", volume: 0.14 }], caps: [] },
+    { kind: "panel", name: "Sign in", chapter: "Step 3", panel: "stepSignIn", beats: 5, note: "Redrawn from the real sign-in page", cues: [{ at: 50, sfx: "tick" }, { at: 56, sfx: "hit", volume: 0.2 }], caps: [] },
     { kind: "panel", name: "Use", chapter: "Step 4", panel: "stepUse", beats: 6, note: "Lines from the real run",
       cues: [{ at: 20, sfx: "tick", volume: 0.16 }, { at: 46, sfx: "chime", volume: 0.18 }], caps: [] },
     { kind: "end", name: "End", beats: 5, line1: "That's it.", line2: "brain.mcpbox.dev/mcp" },

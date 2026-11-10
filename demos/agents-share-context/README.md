@@ -40,7 +40,8 @@ Kettlebird Coffee and everything about it are invented.
 1. Make a private markdown repo for the demo brain, add the Agent Brain GitHub App to it, and
    register it (`pnpm register-brain <owner/repo> --workos-user <id>`), with
    `{"directWrites": true}` in its profile so `remember` commits straight away.
-2. Sign Claude Code and Codex in to the brain server, then `run/run.sh <scratch dir>`.
+2. Add the server to Claude Code under the name `second_brain` (the run script's tool names
+   expect it) and to Codex, sign both in, then `run/run.sh <scratch dir>`.
 3. Copy the replies into `film/src/products/brain/run.ts`.
 4. In `film/`: `pnpm install`, then the audio
    (`uv run --with numpy --with scipy python scripts/make_audio.py sfx --dir public/audio/sfx`

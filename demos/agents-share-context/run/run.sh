@@ -10,7 +10,9 @@ claude_prompt="Let's lock the Kettlebird subscription: \$18 a bag, ships every t
 gpt_prompt="Write a short launch email for the Kettlebird coffee subscription. Use what's in our brain."
 app="You are a chat assistant inside a desktop chat app. Your only tools are the Agent Brain connector. Answer like a chat app: short, plain text."
 
-# 1. Claude (Claude Code in print mode, brain tools only)
+# 1. Claude (Claude Code in print mode, brain tools only). The tool names below assume the server
+#    is registered in Claude Code as "second_brain":
+#      claude mcp add --transport http second_brain https://brain.mcpbox.dev/mcp
 claude -p "$claude_prompt" --output-format stream-json --verbose \
   --append-system-prompt "$app" \
   --allowedTools "mcp__second_brain__list_brains mcp__second_brain__search mcp__second_brain__remember" \
