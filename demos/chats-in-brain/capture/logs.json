@@ -1,0 +1,370 @@
+{
+ "_about": "Action logs from the live captures on 2026-11-10 (demo account, invented chats). Times are epoch ms; boxes are CSS px in a 1600x900 viewport. recStart is when the recorder started; its first frame lands about 500 ms later.",
+ "frameOffsetMs": 500,
+ "clips": {
+  "list": {
+   "recStart": 1794323114370,
+   "events": [
+    {
+     "kind": "mark",
+     "name": "scroll",
+     "at": 1794323117438,
+     "x": 184,
+     "y": 268,
+     "w": 1232,
+     "h": 600,
+     "frame": 106
+    }
+   ]
+  },
+  "share": {
+   "recStart": 1794322940942,
+   "t0": 1794322941023,
+   "relative": true,
+   "events": [
+    {
+     "t": 1502,
+     "kind": "move",
+     "name": "search",
+     "x": 184,
+     "y": 87,
+     "w": 1232,
+     "h": 59
+    },
+    {
+     "t": 2154,
+     "kind": "click",
+     "name": "search",
+     "x": 184,
+     "y": 87,
+     "w": 1232,
+     "h": 59
+    },
+    {
+     "t": 5247,
+     "kind": "move",
+     "name": "client",
+     "x": 184,
+     "y": 180,
+     "w": 150,
+     "h": 36
+    },
+    {
+     "t": 5899,
+     "kind": "click",
+     "name": "client",
+     "x": 184,
+     "y": 180,
+     "w": 150,
+     "h": 36
+    },
+    {
+     "t": 8101,
+     "kind": "mark",
+     "name": "safari-card",
+     "x": 184,
+     "y": 268,
+     "w": 1232,
+     "h": 119
+    },
+    {
+     "t": 8101,
+     "kind": "move",
+     "name": "open",
+     "x": 184,
+     "y": 268,
+     "w": 1232,
+     "h": 119
+    },
+    {
+     "t": 8752,
+     "kind": "click",
+     "name": "open",
+     "x": 184,
+     "y": 268,
+     "w": 1232,
+     "h": 119
+    },
+    {
+     "t": 11754,
+     "kind": "mark",
+     "name": "detail",
+     "x": 604,
+     "y": 268,
+     "w": 812,
+     "h": 632
+    },
+    {
+     "t": 11754,
+     "kind": "move",
+     "name": "share-button",
+     "x": 624,
+     "y": 362,
+     "w": 140,
+     "h": 43
+    },
+    {
+     "t": 12405,
+     "kind": "click",
+     "name": "share-button",
+     "x": 624,
+     "y": 362,
+     "w": 140,
+     "h": 43
+    },
+    {
+     "t": 13409,
+     "kind": "move",
+     "name": "email",
+     "x": 22,
+     "y": 124,
+     "w": 516,
+     "h": 45
+    },
+    {
+     "t": 14061,
+     "kind": "click",
+     "name": "email",
+     "x": 22,
+     "y": 124,
+     "w": 516,
+     "h": 45
+    },
+    {
+     "t": 15284,
+     "kind": "move",
+     "name": "from",
+     "x": 22,
+     "y": 202,
+     "w": 165,
+     "h": 45
+    },
+    {
+     "t": 15935,
+     "kind": "click",
+     "name": "from",
+     "x": 22,
+     "y": 202,
+     "w": 165,
+     "h": 45
+    },
+    {
+     "t": 16012,
+     "kind": "move",
+     "name": "to",
+     "x": 197,
+     "y": 202,
+     "w": 165,
+     "h": 45
+    },
+    {
+     "t": 16663,
+     "kind": "click",
+     "name": "to",
+     "x": 197,
+     "y": 202,
+     "w": 165,
+     "h": 45
+    },
+    {
+     "t": 16941,
+     "kind": "move",
+     "name": "note",
+     "x": 22,
+     "y": 281,
+     "w": 516,
+     "h": 45
+    },
+    {
+     "t": 17592,
+     "kind": "click",
+     "name": "note",
+     "x": 22,
+     "y": 281,
+     "w": 516,
+     "h": 45
+    },
+    {
+     "t": 19631,
+     "kind": "move",
+     "name": "preview",
+     "x": 366,
+     "y": 337,
+     "w": 90,
+     "h": 43
+    },
+    {
+     "t": 20282,
+     "kind": "click",
+     "name": "preview",
+     "x": 366,
+     "y": 337,
+     "w": 90,
+     "h": 43
+    },
+    {
+     "t": 22884,
+     "kind": "mark",
+     "name": "preview-box",
+     "x": 22,
+     "y": 337,
+     "w": 516,
+     "h": 260
+    },
+    {
+     "t": 22884,
+     "kind": "move",
+     "name": "confirm",
+     "x": 464,
+     "y": 609,
+     "w": 74,
+     "h": 43
+    },
+    {
+     "t": 23535,
+     "kind": "click",
+     "name": "confirm",
+     "x": 464,
+     "y": 609,
+     "w": 74,
+     "h": 43
+    },
+    {
+     "t": 25039,
+     "kind": "mark",
+     "name": "done-box",
+     "x": 22,
+     "y": 609,
+     "w": 516,
+     "h": 101
+    }
+   ]
+  },
+  "open": {
+   "recStart": 1794323036451,
+   "events": [
+    {
+     "kind": "mark",
+     "name": "shared-list",
+     "at": 1794323036599,
+     "x": 184,
+     "y": 87,
+     "w": 1232,
+     "h": 156,
+     "frame": 0
+    },
+    {
+     "kind": "move",
+     "name": "open-shared",
+     "at": 1794323038401,
+     "x": 184,
+     "y": 163,
+     "w": 1232,
+     "h": 80,
+     "frame": 76
+    },
+    {
+     "kind": "click",
+     "name": "open-shared",
+     "at": 1794323039053,
+     "x": 184,
+     "y": 163,
+     "w": 1232,
+     "h": 80,
+     "frame": 96
+    },
+    {
+     "kind": "mark",
+     "name": "loaded",
+     "at": 1794323040212,
+     "x": 350,
+     "y": 87,
+     "w": 900,
+     "h": 408,
+     "frame": 214
+    },
+    {
+     "kind": "mark",
+     "name": "banner",
+     "at": 1794323041413,
+     "x": 370,
+     "y": 107,
+     "w": 860,
+     "h": 40,
+     "frame": 222
+    },
+    {
+     "kind": "mark",
+     "name": "turns",
+     "at": 1794323044915,
+     "x": 370,
+     "y": 324,
+     "w": 860,
+     "h": 142,
+     "frame": 250
+    }
+   ]
+  },
+  "revoke": {
+   "recStart": 1794323878085,
+   "events": [
+    {
+     "kind": "mark",
+     "name": "share-card",
+     "at": 1794323879813,
+     "frame": 0,
+     "x": 184,
+     "y": 143,
+     "w": 1232,
+     "h": 110
+    },
+    {
+     "kind": "move",
+     "name": "revoke",
+     "at": 1794323881615,
+     "frame": 202,
+     "x": 266,
+     "y": 209,
+     "w": 70,
+     "h": 30
+    },
+    {
+     "kind": "click",
+     "name": "revoke",
+     "at": 1794323882266,
+     "frame": 226,
+     "x": 266,
+     "y": 209,
+     "w": 70,
+     "h": 30
+    },
+    {
+     "kind": "mark",
+     "name": "revoked",
+     "at": 1794323882671,
+     "frame": 235,
+     "x": 516,
+     "y": 184,
+     "w": 62,
+     "h": 22
+    }
+   ]
+  },
+  "gone": {
+   "recStart": 1794323979341,
+   "events": [
+    {
+     "kind": "mark",
+     "name": "not-available",
+     "at": 1794323979341,
+     "frame": 0,
+     "x": 350,
+     "y": 87,
+     "w": 900,
+     "h": 92
+    }
+   ]
+  }
+ },
+ "_frames": "An event's 'frame' (when set) was read off the footage and wins over its clock time: the preview recorder delivered frames late on a hidden tab (open, revoke), so those moments are pinned by eye."
+}

@@ -1,0 +1,16 @@
+{
+ "width": 1600,
+ "height": 900,
+ "fps": 30,
+ "frames": 283,
+ "cursor": [],
+ "marks": {
+  "scroll": {
+   "frame": 106,
+   "x": 184,
+   "y": 268,
+   "width": 1232,
+   "height": 600
+  }
+ }
+}

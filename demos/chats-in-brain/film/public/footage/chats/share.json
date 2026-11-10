@@ -1,0 +1,158 @@
+{
+ "width": 1600,
+ "height": 900,
+ "fps": 30,
+ "frames": 839,
+ "cursor": [
+  {
+   "frame": 32,
+   "x": 354,
+   "y": 116,
+   "travel": 20
+  },
+  {
+   "frame": 52,
+   "x": 354,
+   "y": 116,
+   "click": true
+  },
+  {
+   "frame": 145,
+   "x": 259,
+   "y": 198,
+   "travel": 19
+  },
+  {
+   "frame": 164,
+   "x": 259,
+   "y": 198,
+   "click": true
+  },
+  {
+   "frame": 230,
+   "x": 354,
+   "y": 298,
+   "travel": 20
+  },
+  {
+   "frame": 250,
+   "x": 354,
+   "y": 298,
+   "click": true
+  },
+  {
+   "frame": 340,
+   "x": 694,
+   "y": 384,
+   "travel": 20
+  },
+  {
+   "frame": 360,
+   "x": 694,
+   "y": 384,
+   "click": true
+  },
+  {
+   "frame": 390,
+   "x": 192,
+   "y": 146,
+   "travel": 19
+  },
+  {
+   "frame": 409,
+   "x": 192,
+   "y": 146,
+   "click": true
+  },
+  {
+   "frame": 446,
+   "x": 104,
+   "y": 224,
+   "travel": 19
+  },
+  {
+   "frame": 465,
+   "x": 104,
+   "y": 224,
+   "click": true
+  },
+  {
+   "frame": 468,
+   "x": 280,
+   "y": 224,
+   "travel": 19
+  },
+  {
+   "frame": 487,
+   "x": 280,
+   "y": 224,
+   "click": true
+  },
+  {
+   "frame": 496,
+   "x": 192,
+   "y": 304,
+   "travel": 19
+  },
+  {
+   "frame": 515,
+   "x": 192,
+   "y": 304,
+   "click": true
+  },
+  {
+   "frame": 576,
+   "x": 411,
+   "y": 358,
+   "travel": 20
+  },
+  {
+   "frame": 596,
+   "x": 411,
+   "y": 358,
+   "click": true
+  },
+  {
+   "frame": 674,
+   "x": 501,
+   "y": 630,
+   "travel": 19
+  },
+  {
+   "frame": 693,
+   "x": 501,
+   "y": 630,
+   "click": true
+  }
+ ],
+ "marks": {
+  "safari-card": {
+   "frame": 230,
+   "x": 184,
+   "y": 268,
+   "width": 1232,
+   "height": 119
+  },
+  "detail": {
+   "frame": 340,
+   "x": 604,
+   "y": 268,
+   "width": 812,
+   "height": 632
+  },
+  "preview-box": {
+   "frame": 674,
+   "x": 22,
+   "y": 337,
+   "width": 516,
+   "height": 260
+  },
+  "done-box": {
+   "frame": 739,
+   "x": 22,
+   "y": 609,
+   "width": 516,
+   "height": 101
+  }
+ }
+}

@@ -1,0 +1,36 @@
+{
+ "width": 1600,
+ "height": 900,
+ "fps": 30,
+ "frames": 933,
+ "cursor": [
+  {
+   "frame": 202,
+   "x": 301,
+   "y": 224,
+   "travel": 24
+  },
+  {
+   "frame": 226,
+   "x": 301,
+   "y": 224,
+   "click": true
+  }
+ ],
+ "marks": {
+  "share-card": {
+   "frame": 0,
+   "x": 184,
+   "y": 143,
+   "width": 1232,
+   "height": 110
+  },
+  "revoked": {
+   "frame": 235,
+   "x": 516,
+   "y": 184,
+   "width": 62,
+   "height": 22
+  }
+ }
+}
