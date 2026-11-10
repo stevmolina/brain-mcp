@@ -116,7 +116,7 @@ export const Camera: React.FC<{ keys: CamKey[]; children: React.ReactNode }> = (
 };
 
 // ------------------------------------------------------------------ Claude
-export type ChatTimes = { type: number; send: number; tool: number; toolDone: number; reply: number };
+export type ChatTimes = { type: number; send: number; tool: number; toolDone: number; reply: number; cpf?: number; wpf?: number };
 
 const C = { bg: "#FAF9F5", bar: "#F5F4EE", line: "#E6E3D8", bubble: "#F0EEE6", text: "#141413", muted: "#83817A" };
 
@@ -124,7 +124,7 @@ export const ClaudeChat: React.FC<{ rect: Box; t: ChatTimes; prompt: string; too
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const sent = f >= t.send;
-  const draft = sent ? "" : typed(prompt, f, t.type);
+  const draft = sent ? "" : typed(prompt, f, t.type, t.cpf);
   const col = 940;
   const colLeft = (rect.width - col) / 2;
   const bubble = spring({ frame: f - t.send, fps, config: { damping: 18, stiffness: 170 } });
@@ -186,7 +186,7 @@ export const ChatGPTChat: React.FC<{
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const sent = f >= t.send;
-  const draft = sent ? "" : typed(prompt, f, t.type);
+  const draft = sent ? "" : typed(prompt, f, t.type, t.cpf);
   const col = 960;
   const colLeft = (rect.width - col) / 2;
   const bubble = spring({ frame: f - t.send, fps, config: { damping: 18, stiffness: 170 } });
@@ -194,8 +194,9 @@ export const ChatGPTChat: React.FC<{
   const card = spring({ frame: f - t.card, fps, config: { damping: 20, stiffness: 150 } });
   const subjStart = t.card + 6;
   const bodyStarts: number[] = [];
-  let at = subjStart + subject.split(" ").length / 0.9 + 4;
-  for (const line of body) { bodyStarts.push(at); at += line.split(" ").length / 0.9 + 3; }
+  const wpf = t.wpf ?? 0.9;
+  let at = subjStart + subject.split(" ").length / wpf + 4;
+  for (const line of body) { bodyStarts.push(at); at += line.split(" ").length / wpf + 3; }
   const shimmer = (f % 40) / 40;
   return (
     <DesktopWindow rect={rect} bg={G.bg} bar={G.bar} border={G.line}
@@ -229,9 +230,9 @@ export const ChatGPTChat: React.FC<{
               <svg width="22" height="22" viewBox="0 0 24 24" style={{ marginRight: 18 }}><path d="M4 20h4L19 9l-4-4L4 16z" fill="none" stroke={G.text} strokeWidth="1.8" strokeLinejoin="round" /></svg>
               <svg width="22" height="22" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5" fill="none" stroke={G.text} strokeWidth="1.8" /><path d="M16 5H6a2 2 0 0 0-2 2v9" fill="none" stroke={G.text} strokeWidth="1.8" /></svg>
             </div>
-            <div style={{ fontSize: 24, fontWeight: 600, lineHeight: 1.4 }}><Stream text={subject} f={f} start={subjStart} wpf={0.9} facts={facts} hlAt={t.hl} /></div>
+            <div style={{ fontSize: 24, fontWeight: 600, lineHeight: 1.4 }}><Stream text={subject} f={f} start={subjStart} wpf={wpf} facts={facts} hlAt={t.hl} /></div>
             {body.map((line, i) => (
-              <div key={i} style={{ marginTop: 12, fontSize: 24, lineHeight: 1.5 }}><Stream text={line} f={f} start={bodyStarts[i]} wpf={0.9} facts={facts} hlAt={t.hl + 4} /></div>
+              <div key={i} style={{ marginTop: 12, fontSize: 24, lineHeight: 1.5 }}><Stream text={line} f={f} start={bodyStarts[i]} wpf={wpf} facts={facts} hlAt={t.hl + 4} /></div>
             ))}
           </div>
         ) : null}
@@ -250,13 +251,13 @@ export const ChatGPTChat: React.FC<{
 // ------------------------------------------------------------------ the Agent Brain note
 // The page the claim landed on, drawn the way Agent Brain draws notes: a ruled notebook card,
 // 3px ink border, mono path, the new line under a pink highlighter.
-export const NotePage: React.FC<{ rect: Box; page: string; before: { kind: string; text: string }[]; heading: string; added: string; addAt: number; by: React.ReactNode }> = ({ rect, page, before, heading, added, addAt, by }) => {
+export const NotePage: React.FC<{ rect: Box; page: string; before: { kind: string; text: string }[]; heading: string; added: string; addAt: number; cpf?: number; by: React.ReactNode }> = ({ rect, page, before, heading, added, addAt, cpf = 2.6, by }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const pop = spring({ frame: f, fps, config: { damping: 16, stiffness: 120 } });
-  const typedAdded = typed(added, f, addAt, 2.6);
-  const sweep = ramp(f, addAt + added.length / 2.6 + 2, 12);
-  const chip = spring({ frame: f - (addAt + added.length / 2.6 + 6), fps, config: { damping: 14, stiffness: 180 } });
+  const typedAdded = typed(added, f, addAt, cpf);
+  const sweep = ramp(f, addAt + added.length / cpf + 2, 12);
+  const chip = spring({ frame: f - (addAt + added.length / cpf + 6), fps, config: { damping: 14, stiffness: 180 } });
   const row = (k: string, text: string, i: number) => k === "h"
     ? <div key={i} style={{ fontWeight: 700, fontSize: 30, marginTop: i ? 22 : 0 }}>{text}</div>
     : <div key={i} style={{ fontSize: 26, marginTop: 10, paddingLeft: 26, textIndent: -26 }}>-&nbsp;&nbsp;{text}</div>;

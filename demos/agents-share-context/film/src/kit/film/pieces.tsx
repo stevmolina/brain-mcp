@@ -46,7 +46,7 @@ export const SyntheticChip: React.FC<{ theme: FilmTheme; size?: number; delay?: 
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: size * 0.45, fontFamily: theme.fontSans, fontWeight: 600, fontSize: size, color: dark ? "#fff" : theme.ink, border: `2px solid ${dark ? "rgba(255,255,255,0.25)" : theme.rule}`, background: dark ? "rgba(255,255,255,0.06)" : "#fff", borderRadius: 999, padding: `${size * 0.3}px ${size * 0.75}px`, scale: String(0.6 + 0.4 * s), opacity: s, transformOrigin: "left center", whiteSpace: "nowrap" }}>
       <span style={{ width: size * 0.36, height: size * 0.36, borderRadius: "50%", background: theme.flag, opacity: pulse }} />
-      Synthetic demo data
+      {theme.chip ?? "Synthetic demo data"}
     </div>
   );
 };

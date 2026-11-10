@@ -1,0 +1,58 @@
+{
+ "m-title": {
+  "text": "Le contás algo a Claude, y ChatGPT ya lo sabe.",
+  "frames": 88
+ },
+ "m-claude-1": {
+  "text": "Le pido a Claude que fije el plan.",
+  "frames": 58
+ },
+ "m-claude-2": {
+  "text": "Y Claude lo guarda en el brain del equipo.",
+  "frames": 70
+ },
+ "m-brain": {
+  "text": "Queda como una nota en git. Cualquier agente la puede leer.",
+  "frames": 96
+ },
+ "m-gpt-1": {
+  "text": "Más tarde, en ChatGPT, pido el mail.",
+  "frames": 72
+ },
+ "m-gpt-2": {
+  "text": "Busca en el brain por su cuenta.",
+  "frames": 55
+ },
+ "m-gpt-3": {
+  "text": "Mismos datos. Nadie copió nada.",
+  "frames": 63
+ },
+ "m-end": {
+  "text": "Agent Brain. Le contás a uno, y lo saben todos.",
+  "frames": 86
+ },
+ "h-title": {
+  "text": "Cómo empezar. Son cuatro pasos.",
+  "frames": 57
+ },
+ "h-1": {
+  "text": "Uno: copiá el link de tu brain.",
+  "frames": 53
+ },
+ "h-2": {
+  "text": "Dos: pegalo en Claude como conector, o en ChatGPT como servidor propio.",
+  "frames": 127
+ },
+ "h-3": {
+  "text": "Tres: iniciá sesión una vez.",
+  "frames": 48
+ },
+ "h-4": {
+  "text": "Cuatro: decile a un agente que se acuerde de algo, y preguntale a otro.",
+  "frames": 115
+ },
+ "h-end": {
+  "text": "Y listo.",
+  "frames": 22
+ }
+}

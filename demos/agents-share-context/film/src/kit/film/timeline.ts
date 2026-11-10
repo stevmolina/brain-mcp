@@ -10,7 +10,9 @@ export const FILM_FPS = 30;
 
 export type Sfx = "whoosh" | "tick" | "hit" | "chime";
 export type Cue = { at: number; sfx: Sfx; volume?: number };
-export type Duck = { from: number; to: number };
+export type Duck = { from: number; to: number; deep?: boolean };
+// A voiceover line: scene frame it starts on, the file under public/, and its length in frames.
+export type Vo = { at: number; src: string; frames: number };
 
 // A recorded clip and where the camera looks in it (footage px, keyed on source frames).
 export type FilmClip = { src: string; meta: ShotMeta; wide: ZoomKey[]; tall?: ZoomKey[] };
@@ -29,16 +31,16 @@ export type FilmCallout = {
 export type FilmFocus = { clip: string; mark: Mark; from: number; to: number; pad?: number; callout?: FilmCallout };
 
 export type FilmScene =
-  | { kind: "title"; name: string; beats: number; headline: string; sub?: string; highlight?: string[] }
-  | { kind: "end"; name: string; beats: number; line1?: string; line2?: string }
+  | { kind: "title"; name: string; beats: number; headline: string; sub?: string; highlight?: string[]; vo?: Vo[] }
+  | { kind: "end"; name: string; beats: number; line1?: string; line2?: string; note?: string; vo?: Vo[] }
   | { kind: "shot"; name: string; chapter: string; window: string; segs: FilmSeg[]; caps: FilmCap[]; focus?: FilmFocus[]; note?: string; overlay?: string }
-  | { kind: "panel"; name: string; chapter: string; beats: number; panel: string; caps: FilmCap[]; cues?: Cue[]; note?: string };
+  | { kind: "panel"; name: string; chapter: string; beats: number; panel: string; caps: FilmCap[]; cues?: Cue[]; note?: string; vo?: Vo[] };
 
 export type FilmCut = { id: string; bed: string; key: string; clips: Record<string, FilmClip>; scenes: FilmScene[] };
 
 export type Placed = { scene: FilmScene; start: number; frames: number; segs: FilmSeg[]; index: string };
 export type Plan = {
-  placed: Placed[]; total: number; ducks: Duck[]; cues: Cue[];
+  placed: Placed[]; total: number; ducks: Duck[]; cues: Cue[]; voices: Vo[];
   music: { bed: string; key: string; seconds: number; drop: number; outro: number };
 };
 
@@ -88,8 +90,14 @@ export const planCut = (cut: FilmCut): Plan => {
 
   const ducks: Duck[] = [];
   const cues: Cue[] = [];
+  const voices: Vo[] = [];
   for (const [i, p] of placed.entries()) {
     const { scene, start } = p;
+    // Voice lines play on top of everything; the music ducks deeper under them.
+    for (const v of ("vo" in scene ? scene.vo : undefined) ?? []) {
+      voices.push({ ...v, at: start + v.at });
+      ducks.push({ from: start + v.at, to: start + v.at + v.frames, deep: true });
+    }
     if (scene.kind === "title") {
       cues.push({ at: start + 4, sfx: "tick" }, { at: start + 14, sfx: "hit", volume: 0.2 });
       continue;
@@ -131,7 +139,7 @@ export const planCut = (cut: FilmCut): Plan => {
   const firstScene = placed.find((p) => p.scene.kind !== "title") ?? placed[0];
   const end = placed.find((p) => p.scene.kind === "end") ?? placed[placed.length - 1];
   return {
-    placed, total, ducks, cues: clean,
+    placed, total, ducks, cues: clean, voices,
     music: { bed: cut.bed, key: cut.key, seconds: total / FILM_FPS, drop: firstScene.start / FILM_FPS, outro: end.start / FILM_FPS },
   };
 };

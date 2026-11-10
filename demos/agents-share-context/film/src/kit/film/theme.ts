@@ -26,6 +26,7 @@ export type FilmTheme = {
   // The wordmark. Default: the product name in fontWord, tracked out. `hand` sets it like a highlighter
   // label (Agent Brain: Caveat on a pink block).
   brand?: { text: string; hand?: boolean; bg?: string };
+  chip?: string; // the honesty chip's words (default "Synthetic demo data")
 };
 
 export const nightOf = (t: FilmTheme) => t.night ?? t.ink;

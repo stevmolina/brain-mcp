@@ -1,9 +1,10 @@
+import { createContext, useContext } from "react";
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import type { Panels, PanelProps } from "../../kit/film/Film";
 import { clamp, EASE_OUT } from "../../kit/film/theme";
 import { APPLE_PATH, BRAIN_PATH, CLAUDE_ORANGE, CLAUDE_PATH, GITHUB_PATH, GOOGLE_PATH, Mark, OPENAI_PATH } from "./icons";
 import { BRAIN_NAME, CHATGPT_RUN, CLAUDE_RUN, NOTE } from "./run";
-import { T } from "./filmCuts";
+import { T as T_EN, type Timing } from "./filmCuts";
 import { bl, brainFilm, ink, muted, pk, yl } from "./theme";
 import { AgentBadge, BrainBadge, Camera, ChatGPTChat, ClaudeChat, HandArrow, NotePage, SERIF, ramp, typed, type Box } from "./ui";
 
@@ -12,9 +13,35 @@ const HAND = brainFilm.fontWord;
 const MONO = brainFilm.fontMono;
 const WIN: Box = { left: 232, top: 100, width: 1456, height: 806 };
 
+// Which cut is playing: its words on screen and its pace. The app screens stay in English
+// in every cut, because the real run was in English.
+export type Lang = "en" | "es";
+export const FilmLang = createContext<{ lang: Lang; T: Timing }>({ lang: "en", T: T_EN });
+const COPY = {
+  en: {
+    savedBy: "saved by Claude · just now", sticky: ["Saved by Claude.", "Read by ChatGPT."],
+    s1: ["Copy the link.", "This is the address of your team's brain."], copy: "Copy", copied: "Copied ✓",
+    s2: ["Add it to your agent.", "Paste it as a connector in Claude, or as a custom server in ChatGPT."],
+    s3: ["Sign in once.", "Your agent asks the first time. After that it just works."], connected: "Connected",
+    s4: ["Tell one agent. Ask another.", `Say "remember this" in one app. Any other app can find it.`],
+  },
+  es: {
+    savedBy: "guardado por Claude · recién", sticky: ["Lo guardó Claude.", "Lo leyó ChatGPT."],
+    s1: ["Copiá el link.", "Es la dirección del brain de tu equipo."], copy: "Copiar", copied: "Copiado ✓",
+    s2: ["Agregalo a tu agente.", "En Claude, como conector. En ChatGPT, como servidor propio."],
+    s3: ["Iniciá sesión una vez.", "Tu agente lo pide la primera vez. Después funciona solo."], connected: "Conectado",
+    s4: ["Contale a uno. Preguntale a otro.", `Decile "acordate de esto" en una app. Cualquier otra lo encuentra.`],
+  },
+};
+const useFilm = () => {
+  const ctx = useContext(FilmLang);
+  return { T: ctx.T, c: COPY[ctx.lang] };
+};
+
 // ------------------------------------------------------------------ the film
 const ClaudePanel: React.FC<PanelProps> = () => {
-  const t = T.claude;
+  const { T } = useFilm();
+  const t = { ...T.claude, cpf: T.cpf };
   return (
     <Camera keys={[
       { f: 0, s: 1, x: 960, y: 540 }, { f: 24, s: 1.05, x: 960, y: 860 }, { f: t.send - 2, s: 1.05, x: 960, y: 860 },
@@ -27,15 +54,16 @@ const ClaudePanel: React.FC<PanelProps> = () => {
 
 const BrainPanel: React.FC<PanelProps> = () => {
   const f = useCurrentFrame();
+  const { T, c } = useFilm();
   const page: Box = { left: 470, top: 230, width: 980, height: 400 };
   const by = (
     <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#fff", border: `3px solid ${ink}`, borderRadius: 99, padding: "8px 18px 8px 12px", fontFamily: SANS, fontWeight: 600, fontSize: 22, boxShadow: "4px 5px 0 rgba(17,17,17,0.9)" }}>
-      <Mark d={CLAUDE_PATH} size={26} color={CLAUDE_ORANGE} />saved by Claude · just now
+      <Mark d={CLAUDE_PATH} size={26} color={CLAUDE_ORANGE} />{c.savedBy}
     </div>
   );
   return (
     <AbsoluteFill>
-      <NotePage rect={page} page={NOTE.page} before={NOTE.before} heading={NOTE.heading} added={NOTE.added} addAt={T.brain.add} by={by} />
+      <NotePage rect={page} page={NOTE.page} before={NOTE.before} heading={NOTE.heading} added={NOTE.added} addAt={T.brain.add} cpf={T.brain.cpf} by={by} />
       <div style={{ position: "absolute", left: 150, top: 330, opacity: ramp(f, 2, 10), translate: `${(1 - ramp(f, 2, 14)) * -40}px 0` }}><AgentBadge who="claude" label="Claude" /></div>
       <HandArrow x1={290} y1={360} x2={455} y2={420} bend={-70} p={ramp(f, 6, 18)} />
       <div style={{ position: "absolute", left: 1640, top: 330, opacity: ramp(f, T.brain.read, 10), translate: `${(1 - ramp(f, T.brain.read, 14)) * 40}px 0` }}><AgentBadge who="chatgpt" label="ChatGPT" /></div>
@@ -47,7 +75,8 @@ const BrainPanel: React.FC<PanelProps> = () => {
 const ChatGPTPanel: React.FC<PanelProps> = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const t = T.chatgpt;
+  const { T, c } = useFilm();
+  const t = { ...T.chatgpt, cpf: T.cpf, wpf: T.wpf };
   const s = spring({ frame: f - t.hl - 6, fps, config: { damping: 14, stiffness: 160 } });
   return (
     <AbsoluteFill>
@@ -60,7 +89,7 @@ const ChatGPTPanel: React.FC<PanelProps> = () => {
       {/* the sticky that says where the facts came from */}
       <div style={{ position: "absolute", right: 70, top: 560, rotate: `${3 - 3 * s}deg`, scale: String(0.7 + 0.3 * s), opacity: s, background: yl, border: `3px solid ${brainFilm.halo[1]}`, borderRadius: 6, padding: "18px 24px", boxShadow: "6px 8px 0 rgba(17,17,17,0.85)", fontFamily: SANS, width: 360 }}>
         <div style={{ fontFamily: MONO, fontSize: 18, color: muted }}>{NOTE.page}</div>
-        <div style={{ marginTop: 6, fontSize: 27, fontWeight: 700, lineHeight: 1.25, color: ink }}>Saved by Claude.<br />Read by ChatGPT.</div>
+        <div style={{ marginTop: 6, fontSize: 27, fontWeight: 700, lineHeight: 1.25, color: ink }}>{c.sticky[0]}<br />{c.sticky[1]}</div>
       </div>
     </AbsoluteFill>
   );
@@ -110,13 +139,14 @@ const StepLink: React.FC<PanelProps> = () => {
   const click = 46;
   const c = move(f, [[10, 760, 640], [40, 742, 352]]);
   const copied = f >= click;
+  const { c: t } = useFilm();
   return (
-    <Step n={1} title="Copy the link." sub="This is the address of your team's brain." color={pk}>
+    <Step n={1} title={t.s1[0]} sub={t.s1[1]} color={pk}>
       <div style={card({ left: 20, top: 250, width: 860, height: 190, display: "flex", alignItems: "center", padding: "0 30px 0 40px", gap: 24, opacity: ramp(f, 4, 10) })}>
         <Mark d={BRAIN_PATH} size={44} color={ink} />
         <span style={{ flex: 1, fontFamily: MONO, fontSize: 44, fontWeight: 500, color: ink }}>brain.mcpbox.dev/mcp</span>
         <div style={{ minWidth: 150, height: 74, borderRadius: 12, border: `3px solid ${ink}`, background: copied ? yl : "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontFamily: SANS, fontWeight: 700, fontSize: 26, scale: String(f >= click - 2 && f < click + 3 ? 0.93 : 1) }}>
-          {copied ? "Copied ✓" : "Copy"}
+          {copied ? t.copied : t.copy}
         </div>
       </div>
       <Ripple x={c.x + 4} y={c.y + 4} at={click} />
@@ -156,12 +186,15 @@ const Dialog: React.FC<{ who: "claude" | "chatgpt"; at: number; box: Box }> = ({
   );
 };
 
-const StepConnect: React.FC<PanelProps> = () => (
-  <Step n={2} title="Add it to your agent." sub="Paste it as a connector in Claude, or as a custom server in ChatGPT." color={yl}>
+const StepConnect: React.FC<PanelProps> = () => {
+  const { c } = useFilm();
+  return (
+  <Step n={2} title={c.s2[0]} sub={c.s2[1]} color={yl}>
     <Dialog who="claude" at={4} box={{ left: 10, top: 40, width: 600, height: 330 }} />
     <Dialog who="chatgpt" at={24} box={{ left: 300, top: 400, width: 600, height: 330 }} />
   </Step>
-);
+  );
+};
 
 const StepSignIn: React.FC<PanelProps> = () => {
   const f = useCurrentFrame();
@@ -176,8 +209,9 @@ const StepSignIn: React.FC<PanelProps> = () => {
       )}
     </div>
   );
+  const { c: t } = useFilm();
   return (
-    <Step n={3} title="Sign in once." sub="Your agent asks the first time. After that it just works." color={bl}>
+    <Step n={3} title={t.s3[0]} sub={t.s3[1]} color={bl}>
       {/* the real sign-in page (brain.mcpbox.dev's AuthKit), redrawn */}
       <div style={{ position: "absolute", left: 140, top: 60, width: 640, opacity: ramp(f, 2, 10), translate: `0 ${(1 - ramp(f, 2, 14)) * 30}px`, fontFamily: SANS, textAlign: "center" }}>
         <div style={{ fontSize: 34, fontWeight: 600, color: "#1c1c1c" }}>Sign in</div>
@@ -194,7 +228,7 @@ const StepSignIn: React.FC<PanelProps> = () => {
       <Ripple x={c.x + 4} y={c.y + 4} at={click} />
       <Pointer x={c.x} y={c.y} press={f >= click - 2 && f < click + 3 ? 1 : 0} />
       <div style={{ position: "absolute", left: 300, top: 600, opacity: done, scale: String(0.6 + 0.4 * done), rotate: "-3deg", display: "flex", alignItems: "center", gap: 14, background: pk, border: `3px solid ${ink}`, borderRadius: 99, padding: "12px 26px 12px 14px", boxShadow: "6px 7px 0 rgba(17,17,17,0.9)", fontFamily: SANS, fontWeight: 700, fontSize: 30 }}>
-        <BrainBadge size={44} />Connected
+        <BrainBadge size={44} />{t.connected}
       </div>
     </Step>
   );
@@ -220,12 +254,15 @@ const Bubble: React.FC<{ who: "claude" | "chatgpt"; ask: string; answer: string;
   );
 };
 
-const StepUse: React.FC<PanelProps> = () => (
-  <Step n={4} title="Tell one agent. Ask another." sub={`Say "remember this" in one app. Any other app can find it.`} color={pk}>
+const StepUse: React.FC<PanelProps> = () => {
+  const { c } = useFilm();
+  return (
+  <Step n={4} title={c.s4[0]} sub={c.s4[1]} color={pk}>
     <Bubble who="claude" ask="…launches March 3. Remember that in the brain." answer={CLAUDE_RUN.toolResult} at={4} box={{ left: 20, top: 70, width: 680, height: 230 }} />
     <Bubble who="chatgpt" ask="Write a short launch email… Use what's in our brain." answer={CHATGPT_RUN.toolResult} at={30} box={{ left: 220, top: 380, width: 680, height: 230 }} />
   </Step>
-);
+  );
+};
 
 export const PANELS: Panels = { claude: ClaudePanel, brain: BrainPanel, chatgpt: ChatGPTPanel, stepLink: StepLink, stepConnect: StepConnect, stepSignIn: StepSignIn, stepUse: StepUse };
 export { SERIF };
