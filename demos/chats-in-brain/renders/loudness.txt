@@ -1,17 +1,17 @@
-[Parsed_ebur128_0 @ 0x7ce8c21c80] Summary:
+[Parsed_ebur128_0 @ 0x7c1100a1c0] Summary:
 
   Integrated loudness:
     I:         -16.0 LUFS
     Threshold: -26.2 LUFS
 
   Loudness range:
-    LRA:         2.3 LU
+    LRA:         1.7 LU
     Threshold: -35.9 LUFS
-    LRA low:   -17.4 LUFS
-    LRA high:  -15.0 LUFS
+    LRA low:   -16.6 LUFS
+    LRA high:  -14.9 LUFS
 
   True peak:
-    Peak:       -2.4 dBFS
-[out#0/null @ 0x7ce8c203c0] video:388KiB audio:5852KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
-frame=  936 fps=0.0 q=-0.0 Lsize=N/A time=00:00:31.21 bitrate=N/A speed=87.1x elapsed=0:00:00.35    
-Ducking: while a caption or callout is on screen the music sits 5.3 dB under its own level (design 5.7 dB; reference = title card). Captions and callouts cover about 31 of 31 s.
+    Peak:       -2.2 dBFS
+[out#0/null @ 0x7c11008900] video:395KiB audio:5964KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+frame=  954 fps=0.0 q=-0.0 Lsize=N/A time=00:00:31.80 bitrate=N/A speed=91.7x elapsed=0:00:00.34    
+Ducking: while a caption or callout is on screen the music sits 5.3 dB under its own level (design 5.7 dB; reference = title card). Captions and callouts cover about 32 of 32 s.
