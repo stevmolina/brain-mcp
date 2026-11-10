@@ -1,6 +1,6 @@
 # Your chats in Agent Brain: demo film
 
-A 31-second film of the live sessions pages: search every chat at once, filter by
+A 32-second film of the live sessions pages: search every chat at once, filter by
 client, share two turns of one chat with a teammate, the teammate's read-only view,
 then revoke. Every chat, person and company on screen is invented.
 
