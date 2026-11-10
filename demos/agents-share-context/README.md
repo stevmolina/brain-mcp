@@ -1,6 +1,10 @@
 # Agents share context: demo film and how-to clip
 
-Two short clips for social: captions and an original music bed, no voiceover.
+Two short clips for social, each in two versions:
+
+- **English, silent:** captions and an original music bed.
+- **Spanish, voiced** (for the Spanish post): a voiceover, with the captions, titles and tags
+  in Spanish. The app screens stay in English, as in the real run.
 
 - **The film** (21 s): you settle something in Claude, Claude saves it to Agent Brain,
   and later ChatGPT writes the launch email with the same facts, without anyone pasting
@@ -27,6 +31,15 @@ Kettlebird Coffee and everything about it are invented.
   (WorkOS AuthKit) supports both client metadata documents and dynamic registration, which is
   how those apps register themselves.
 
+## The voice
+
+The Spanish voice is AI-generated on this machine, and nothing is sent to an outside service.
+`film/scripts/make_vo.py` reads the script in `film/vo/es.json`. Chatterbox Multilingual
+(Resemble AI, MIT licence) speaks each line, and Whisper (also local) listens back. A line is
+redone with a new seed until Whisper hears the script and nothing extra, because the model
+sometimes adds words after a short line. Brand names are respelled for the voice ("Chat G P T").
+The music ducks about 11 dB under the voice, and the end card says the voice is AI.
+
 ## Files
 
 - `film/`: the Remotion project, on the product-demo-video film kit with Agent Brain's tokens
@@ -43,7 +56,8 @@ Kettlebird Coffee and everything about it are invented.
 2. Add the server to Claude Code under the name `second_brain` (the run script's tool names
    expect it) and to Codex, sign both in, then `run/run.sh <scratch dir>`.
 3. Copy the replies into `film/src/products/brain/run.ts`.
-4. In `film/`: `pnpm install`, then the audio
+4. For the Spanish cuts, make the voice (the command is at the top of `film/scripts/make_vo.py`).
+5. In `film/`: `pnpm install`, then the audio
    (`uv run --with numpy --with scipy python scripts/make_audio.py sfx --dir public/audio/sfx`
    and `node scripts/film-plan.mjs --beds | sh`), then `pnpm render`.
-5. Offboard the brain (`pnpm offboard-brain <id> --confirm`) and delete the demo repo.
+6. Offboard the brain (`pnpm offboard-brain <id> --confirm`) and delete the demo repo.

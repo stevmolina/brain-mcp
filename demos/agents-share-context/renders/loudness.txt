@@ -1,8 +1,8 @@
+    I:         -16.1 LUFS
+Ducking: while a caption or callout is on screen the music sits 8.6 dB under its own level (design 5.7 dB; reference = title card). Captions and callouts cover about 14 of 19 s.
+    I:         -16.1 LUFS
+Ducking: while a caption or callout is on screen the music sits 11.2 dB under its own level (design 5.7 dB; reference = title card). Captions and callouts cover about 27 of 27 s.
     I:         -16.0 LUFS
-    LRA:         4.3 LU
-    Peak:       -5.2 dBFS
-Ducking: while a caption or callout is on screen the music sits nan dB under its own level (design 5.7 dB; reference = title card). Captions and callouts cover about 0 of 16 s.
-    I:         -16.0 LUFS
-    LRA:         5.3 LU
-    Peak:       -2.9 dBFS
 Ducking: while a caption or callout is on screen the music sits 5.3 dB under its own level (design 5.7 dB; reference = title card). Captions and callouts cover about 13 of 21 s.
+    I:         -16.0 LUFS
+Ducking: while a caption or callout is on screen the music sits nan dB under its own level (design 5.7 dB; reference = title card). Captions and callouts cover about 0 of 16 s.

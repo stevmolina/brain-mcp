@@ -32,7 +32,7 @@ export const TitleCard: React.FC<{ theme: FilmTheme; layout: Layout; headline: s
 };
 
 // Closing card on ink: the halo frames the wordmark, an optional tagline, and a small "Not real data" note.
-export const EndCard: React.FC<{ theme: FilmTheme; layout: Layout; line1?: string; line2?: string }> = ({ theme, layout, line1, line2 }) => {
+export const EndCard: React.FC<{ theme: FilmTheme; layout: Layout; line1?: string; line2?: string; note?: string }> = ({ theme, layout, line1, line2, note: noteText = "Not real data" }) => {
   const frame = useCurrentFrame();
   const tall = layout === "tall";
   const ring = tall ? 520 : 440;
@@ -51,7 +51,7 @@ export const EndCard: React.FC<{ theme: FilmTheme; layout: Layout; line1?: strin
             {line2 ? <KineticWords text={line2} delay={26} stagger={3} style={{ justifyContent: "center", color: theme.halo[1] }} /> : null}
           </div>
         ) : null}
-        <div style={{ marginTop: line1 || line2 ? 40 : 56, fontFamily: theme.fontSans, fontWeight: 500, fontSize: tall ? 26 : 22, letterSpacing: "0.08em", color: nightInkOf(theme), opacity: 0.55 * note, translate: `0 ${(1 - note) * 8}px` }}>Not real data</div>
+        <div style={{ marginTop: line1 || line2 ? 40 : 56, fontFamily: theme.fontSans, fontWeight: 500, fontSize: tall ? 26 : 22, letterSpacing: "0.08em", color: nightInkOf(theme), opacity: 0.55 * note, translate: `0 ${(1 - note) * 8}px` }}>{noteText}</div>
       </AbsoluteFill>
     </Stage>
   );

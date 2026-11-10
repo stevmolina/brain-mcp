@@ -20,7 +20,7 @@ const entry = [
   ...products.map((p, i) => `import * as c${i} from "./src/products/${p}/filmCuts";`),
   `const all = { ${products.map((p, i) => `${p}: c${i}`).join(", ")} };`,
   `const out = [];`,
-  `for (const [product, mod] of Object.entries(all)) for (const cut of [mod.MAIN, mod.SOCIAL]) {`,
+  `for (const [product, mod] of Object.entries(all)) for (const cut of [...new Set(Object.values(mod).filter((c) => c && c.id && c.scenes))]) {`,
   `  if (!cut) continue; const p = planCut(cut);`,
   `  out.push({ product, id: cut.id, frames: p.total, ...p.music, ducks: p.ducks, scenes: p.placed.map((s) => ({ name: s.scene.name, start: s.start, frames: s.frames })) });`,
   `}`,

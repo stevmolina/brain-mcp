@@ -1,0 +1,27 @@
+{
+  "engine": "Kokoro-82M (Apache 2.0), run locally",
+  "check": "mlx-whisper large-v3-turbo, local",
+  "voice": "em_alex",
+  "say": {
+    "ChatGPT": "Chat G P T",
+    "Agent Brain": "Éiyent Bréin",
+    "brain": "bréin",
+    "git": "guit"
+  },
+  "lines": {
+    "m-title": "Le contás algo a Claude, y ChatGPT ya lo sabe.",
+    "m-claude-1": "Le pido a Claude que fije el plan.",
+    "m-claude-2": "Y Claude lo guarda en el brain del equipo.",
+    "m-brain": "Queda como una nota en git. Cualquier agente la puede leer.",
+    "m-gpt-1": "Más tarde, en ChatGPT, pido el mail.",
+    "m-gpt-2": "Busca en el brain por su cuenta.",
+    "m-gpt-3": "Mismos datos. Nadie copió nada.",
+    "m-end": "Agent Brain. Le contás a uno, y lo saben todos.",
+    "h-title": "Cómo empezar. Son cuatro pasos.",
+    "h-1": "Uno: copiá el link de tu brain.",
+    "h-2": "Dos: pegalo en Claude como conector, o en ChatGPT como servidor propio.",
+    "h-3": "Tres: iniciá sesión una vez.",
+    "h-4": "Cuatro: decile a un agente que se acuerde de algo, y preguntale a otro.",
+    "h-end": "Y listo."
+  }
+}

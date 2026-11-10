@@ -36,3 +36,6 @@ export const brainFilm: FilmTheme = {
   pointer: ink,
   brand: { text: "Agent Brain", hand: true, bg: pk },
 };
+
+// The Spanish, voiced cuts: same look, Spanish words around the window.
+export const brainFilmEs: FilmTheme = { ...brainFilm, product: "Memoria compartida", chip: "Datos inventados" };

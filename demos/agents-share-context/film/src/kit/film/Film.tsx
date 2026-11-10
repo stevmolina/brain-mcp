@@ -116,7 +116,7 @@ export const Film: React.FC<{ cut: FilmCut; theme: FilmTheme; layout: Layout; pa
         {plan.placed.flatMap((p, i) => {
           const s = p.scene;
           const body = s.kind === "title" ? <TitleCard theme={theme} layout={layout} headline={s.headline} sub={s.sub} highlight={s.highlight} />
-            : s.kind === "end" ? <EndCard theme={theme} layout={layout} line1={s.line1} line2={s.line2} />
+            : s.kind === "end" ? <EndCard theme={theme} layout={layout} line1={s.line1} line2={s.line2} note={s.note} />
             : s.kind === "shot" ? <ShotScene p={p} cut={cut} theme={theme} layout={layout} panels={panels} />
             : <PanelScene p={p} theme={theme} layout={layout} panels={panels} />;
           const seq = <TransitionSeries.Sequence key={`s${i}`} name={s.name} durationInFrames={p.frames} premountFor={fps}>{body}</TransitionSeries.Sequence>;
@@ -127,7 +127,7 @@ export const Film: React.FC<{ cut: FilmCut; theme: FilmTheme; layout: Layout; pa
           return [t, seq];
         })}
       </TransitionSeries>
-      <Sound bed={plan.music.bed} ducks={plan.ducks} cues={plan.cues} />
+      <Sound bed={plan.music.bed} ducks={plan.ducks} cues={plan.cues} voices={plan.voices} />
     </AbsoluteFill>
   );
 };
