@@ -1,0 +1,162 @@
+{
+  "_about": "Invented chats for the 'your chats in Agent Brain' demo. Every company, person and line here is fictional.",
+  "chats": [
+    {
+      "id": "demo-acme-safari-checkout",
+      "source": "claude",
+      "provider": "claude",
+      "brain": "acme/acme-knowledge",
+      "cwd": "/home/maya/work/acme-shop",
+      "title": "Why does checkout fail on Safari?",
+      "started_at": "2026-11-06T15:12:00Z",
+      "minutes": 48,
+      "turns": [
+        ["user", "Checkout fails on Safari for some Acme customers. The Pay button spins and the order never goes through. Can you find out why?"],
+        ["assistant", "Found it. Safari blocks the cookie the payment step uses to remember the cart, so the checkout loses its session after the card form.\n\nThe fix: keep the checkout session id in the page itself instead of a cookie. I changed the checkout session code and added a Safari test. All 42 checkout tests pass, and the Safari test now completes a payment."],
+        ["user", "Does this change anything for Chrome or Firefox users?"],
+        ["assistant", "No. Chrome and Firefox take the same path, they just never hit the blocked cookie. I ran the checkout tests in all three browsers: same result, payment completes."],
+        ["user", "Good. Write the release note for the Acme team."],
+        ["assistant", "Release note: Fixed a checkout problem on Safari where the Pay button kept spinning. Customers on Safari can now pay normally. No action needed."],
+        ["user", "Ship it to staging."],
+        ["assistant", "Done. It is on staging. I placed a test order with Safari and it went through in 3 seconds."]
+      ]
+    },
+    {
+      "id": "demo-acme-apple-pay",
+      "source": "cursor",
+      "provider": "cursor",
+      "brain": "acme/acme-knowledge",
+      "cwd": "/home/maya/work/acme-shop",
+      "title": "Add Apple Pay to checkout",
+      "started_at": "2026-11-04T10:05:00Z",
+      "minutes": 95,
+      "turns": [
+        ["user", "Add Apple Pay as a payment option on the Acme checkout page."],
+        ["assistant", "Added an Apple Pay button above the card form. It only shows on devices that support it, so the checkout looks the same everywhere else."],
+        ["user", "Put it after the card form instead."],
+        ["assistant", "Moved. The checkout now shows the card form first and Apple Pay below it."]
+      ],
+      "pad": 12
+    },
+    {
+      "id": "demo-acme-cent-rounding",
+      "source": "codex",
+      "provider": "codex",
+      "brain": "acme/acme-knowledge",
+      "cwd": "/home/maya/work/acme-shop",
+      "title": "Checkout total is off by one cent",
+      "started_at": "2026-10-29T14:40:00Z",
+      "minutes": 37,
+      "turns": [
+        ["user", "Some Acme orders show a checkout total one cent higher than the cart. Find the cause."],
+        ["assistant", "The cart rounds each line, the checkout rounds the sum. With three or more discounted items they can differ by a cent. I made checkout round the same way as the cart."]
+      ],
+      "pad": 6
+    },
+    {
+      "id": "demo-acme-redesign-plan",
+      "source": "chatgpt",
+      "provider": "chatgpt",
+      "brain": "acme/acme-knowledge",
+      "cwd": null,
+      "title": "Plan the checkout redesign",
+      "started_at": "2026-10-21T09:30:00Z",
+      "minutes": 60,
+      "turns": [
+        ["user", "Help me plan a simpler checkout for Acme: fewer steps, guest checkout, clear delivery dates."],
+        ["assistant", "A three-step checkout: cart, delivery, payment. Guest checkout by default, account creation offered after the order. Show the delivery date next to every shipping option."]
+      ],
+      "pad": 14
+    },
+    {
+      "id": "demo-acme-checkout-speed",
+      "source": "t3code",
+      "provider": "claude",
+      "brain": "acme/acme-knowledge",
+      "cwd": "/home/maya/work/acme-shop",
+      "title": "Speed up the checkout page",
+      "started_at": "2026-10-16T16:20:00Z",
+      "minutes": 70,
+      "turns": [
+        ["user", "The Acme checkout page takes 4 seconds to load on phones. Make it faster."],
+        ["assistant", "Most of the wait was the address autocomplete loading up front. It now loads when the address field is focused. Checkout opens in 1.2 seconds on a mid-range phone."]
+      ],
+      "pad": 9
+    },
+    {
+      "id": "demo-globex-webhook-retries",
+      "source": "codex",
+      "provider": "codex",
+      "brain": "globex/globex-knowledge",
+      "cwd": "/home/maya/work/globex-api",
+      "title": "Retry failed checkout webhooks",
+      "started_at": "2026-11-02T11:00:00Z",
+      "minutes": 40,
+      "turns": [
+        ["user", "Globex loses orders when the checkout webhook fails once. Add retries."],
+        ["assistant", "Failed checkout webhooks now retry five times over an hour, then land in a list the Globex team can review."]
+      ],
+      "pad": 7
+    },
+    {
+      "id": "demo-globex-onboarding-guide",
+      "source": "claude-ai",
+      "provider": "claude-ai",
+      "brain": "globex/globex-knowledge",
+      "cwd": null,
+      "title": "Draft the Globex onboarding guide",
+      "started_at": "2026-11-08T13:15:00Z",
+      "minutes": 30,
+      "turns": [
+        ["user", "Draft a one-page onboarding guide for new Globex support staff."],
+        ["assistant", "Here is a draft with four parts: tools to install, who to ask, the first week, and how to escalate a ticket."]
+      ],
+      "pad": 6
+    },
+    {
+      "id": "demo-northwind-stock-report",
+      "source": "claude",
+      "provider": "claude",
+      "brain": "northwind/northwind-knowledge",
+      "cwd": "/home/maya/work/northwind-ops",
+      "title": "Weekly stock report email",
+      "started_at": "2026-11-07T08:45:00Z",
+      "minutes": 55,
+      "turns": [
+        ["user", "Send the Northwind warehouse team a stock report every Monday at 8am."],
+        ["assistant", "Set up. Every Monday at 8am the team gets an email with items under their reorder level, sorted by how soon they run out."]
+      ],
+      "pad": 10
+    },
+    {
+      "id": "demo-northwind-carriers",
+      "source": "grok",
+      "provider": "grok",
+      "brain": "northwind/northwind-knowledge",
+      "cwd": null,
+      "title": "Compare shipping carriers",
+      "started_at": "2026-10-27T17:10:00Z",
+      "minutes": 25,
+      "turns": [
+        ["user", "Compare three shipping carriers for Northwind's heavy parcels."],
+        ["assistant", "Here is a side by side on price per kilo, delivery days and tracking for the three carriers you named."]
+      ],
+      "pad": 5
+    },
+    {
+      "id": "demo-northwind-mobile-login",
+      "source": "cursor",
+      "provider": "cursor",
+      "brain": "northwind/northwind-knowledge",
+      "cwd": "/home/maya/work/northwind-ops",
+      "title": "Fix the login page on mobile",
+      "started_at": "2026-10-24T12:00:00Z",
+      "minutes": 33,
+      "turns": [
+        ["user", "The Northwind login page overflows on small phones."],
+        ["assistant", "The form had a fixed width. It now fits the screen down to 320px wide."]
+      ],
+      "pad": 4
+    }
+  ]
+}

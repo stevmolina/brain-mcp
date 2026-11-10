@@ -1,0 +1,50 @@
+{
+ "width": 1600,
+ "height": 900,
+ "fps": 30,
+ "frames": 355,
+ "cursor": [
+  {
+   "frame": 76,
+   "x": 354,
+   "y": 203,
+   "travel": 20
+  },
+  {
+   "frame": 96,
+   "x": 354,
+   "y": 203,
+   "click": true
+  }
+ ],
+ "marks": {
+  "shared-list": {
+   "frame": 0,
+   "x": 184,
+   "y": 87,
+   "width": 1232,
+   "height": 156
+  },
+  "loaded": {
+   "frame": 214,
+   "x": 350,
+   "y": 87,
+   "width": 900,
+   "height": 408
+  },
+  "banner": {
+   "frame": 222,
+   "x": 370,
+   "y": 107,
+   "width": 860,
+   "height": 40
+  },
+  "turns": {
+   "frame": 250,
+   "x": 370,
+   "y": 324,
+   "width": 860,
+   "height": 142
+  }
+ }
+}
