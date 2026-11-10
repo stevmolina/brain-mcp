@@ -1,4 +1,4 @@
-import { TransitionSeries, linearTiming, springTiming } from "@remotion/transitions";
+import { TransitionSeries, springTiming } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { slide } from "@remotion/transitions/slide";
 import { useMemo } from "react";
@@ -123,7 +123,7 @@ export const Film: React.FC<{ cut: FilmCut; theme: FilmTheme; layout: Layout; pa
           if (i === 0) return [seq];
           const t = s.kind === "end"
             ? <TransitionSeries.Transition key={`t${i}`} presentation={slide({ direction: "from-bottom" })} timing={springTiming({ config: { damping: 200 }, durationInFrames: BEAT })} />
-            : <TransitionSeries.Transition key={`t${i}`} presentation={fade()} timing={linearTiming({ durationInFrames: BEAT })} />;
+            : <TransitionSeries.Transition key={`t${i}`} presentation={s.kind === "shot" && plan.placed[i - 1].scene.kind === "shot" ? slide({ direction: "from-right" }) : fade()} timing={springTiming({ config: { damping: 200 }, durationInFrames: BEAT })} />;
           return [t, seq];
         })}
       </TransitionSeries>

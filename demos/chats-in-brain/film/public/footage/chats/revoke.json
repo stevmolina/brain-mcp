@@ -2,35 +2,35 @@
  "width": 1600,
  "height": 900,
  "fps": 30,
- "frames": 933,
+ "frames": 163,
  "cursor": [
   {
-   "frame": 202,
+   "frame": 32,
    "x": 301,
-   "y": 224,
-   "travel": 24
+   "y": 223,
+   "travel": 20
   },
   {
-   "frame": 226,
+   "frame": 52,
    "x": 301,
-   "y": 224,
+   "y": 223,
    "click": true
   }
  ],
  "marks": {
   "share-card": {
-   "frame": 0,
+   "frame": 5,
    "x": 184,
    "y": 143,
    "width": 1232,
-   "height": 110
+   "height": 109
   },
   "revoked": {
-   "frame": 235,
-   "x": 516,
-   "y": 184,
-   "width": 62,
-   "height": 22
+   "frame": 79,
+   "x": 511,
+   "y": 182,
+   "width": 61,
+   "height": 21
   }
  }
 }

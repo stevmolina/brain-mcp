@@ -2,153 +2,160 @@
  "width": 1600,
  "height": 900,
  "fps": 30,
- "frames": 839,
+ "frames": 589,
  "cursor": [
   {
-   "frame": 32,
+   "frame": 47,
    "x": 354,
    "y": 116,
    "travel": 20
   },
   {
-   "frame": 52,
+   "frame": 67,
    "x": 354,
    "y": 116,
    "click": true
   },
   {
-   "frame": 145,
+   "frame": 120,
    "x": 259,
    "y": 198,
-   "travel": 19
+   "travel": 20
   },
   {
-   "frame": 164,
+   "frame": 140,
    "x": 259,
    "y": 198,
    "click": true
   },
   {
-   "frame": 230,
+   "frame": 178,
    "x": 354,
    "y": 298,
    "travel": 20
   },
   {
-   "frame": 250,
+   "frame": 198,
    "x": 354,
    "y": 298,
    "click": true
   },
   {
-   "frame": 340,
+   "frame": 238,
    "x": 694,
-   "y": 384,
+   "y": 382,
    "travel": 20
   },
   {
-   "frame": 360,
+   "frame": 258,
    "x": 694,
-   "y": 384,
+   "y": 382,
    "click": true
   },
   {
-   "frame": 390,
+   "frame": 269,
    "x": 192,
    "y": 146,
    "travel": 19
   },
   {
-   "frame": 409,
+   "frame": 288,
    "x": 192,
    "y": 146,
    "click": true
   },
   {
-   "frame": 446,
+   "frame": 307,
    "x": 104,
    "y": 224,
    "travel": 19
   },
   {
-   "frame": 465,
+   "frame": 326,
    "x": 104,
    "y": 224,
    "click": true
   },
   {
-   "frame": 468,
+   "frame": 328,
    "x": 280,
    "y": 224,
-   "travel": 19
+   "travel": 20
   },
   {
-   "frame": 487,
+   "frame": 348,
    "x": 280,
    "y": 224,
    "click": true
   },
   {
-   "frame": 496,
+   "frame": 349,
    "x": 192,
    "y": 304,
-   "travel": 19
+   "travel": 20
   },
   {
-   "frame": 515,
+   "frame": 369,
    "x": 192,
    "y": 304,
    "click": true
   },
   {
-   "frame": 576,
+   "frame": 403,
    "x": 411,
    "y": 358,
    "travel": 20
   },
   {
-   "frame": 596,
+   "frame": 423,
    "x": 411,
    "y": 358,
    "click": true
   },
   {
-   "frame": 674,
+   "frame": 480,
    "x": 501,
    "y": 630,
    "travel": 19
   },
   {
-   "frame": 693,
+   "frame": 499,
    "x": 501,
    "y": 630,
    "click": true
   }
  ],
  "marks": {
-  "safari-card": {
-   "frame": 230,
+  "list": {
+   "frame": 5,
    "x": 184,
    "y": 268,
    "width": 1232,
-   "height": 119
+   "height": 1075
+  },
+  "results": {
+   "frame": 93,
+   "x": 184,
+   "y": 268,
+   "width": 1232,
+   "height": 739
   },
   "detail": {
-   "frame": 340,
+   "frame": 211,
    "x": 604,
    "y": 268,
    "width": 812,
-   "height": 632
+   "height": 792
   },
   "preview-box": {
-   "frame": 674,
+   "frame": 434,
    "x": 22,
    "y": 337,
    "width": 516,
    "height": 260
   },
   "done-box": {
-   "frame": 739,
+   "frame": 511,
    "x": 22,
    "y": 609,
    "width": 516,
