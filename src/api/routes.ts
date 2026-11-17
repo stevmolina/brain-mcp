@@ -38,7 +38,7 @@ function failure(res: express.Response, status: number, code: string, message: s
 }
 
 function queryInput(req: express.Request, schema: z.ZodObject) {
-  const properties = z.toJSONSchema(schema).properties ?? {};
+  const properties = z.toJSONSchema(schema, { io: 'input' }).properties ?? {};
   return Object.fromEntries(Object.entries(req.query).map(([key, value]) => {
     const field = properties[key];
     if (typeof field === 'object' && field.type === 'boolean' && typeof value === 'string') {
@@ -72,7 +72,7 @@ export function openApi(operations: Map<string, Operation>) {
   for (const [method, path, name] of endpoints) {
     const operation = operations.get(name);
     if (!operation) continue;
-    const schema = z.toJSONSchema(operation.schema);
+    const schema = z.toJSONSchema(operation.schema, { io: 'input' });
     const properties = schema.properties ?? {};
     const requiredFields = schema.required ?? [];
     const input = method === 'get' ? {
