@@ -10,7 +10,7 @@
  * and add_file already says so when it is refused.
  */
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/server';
+import type { ToolRegistrar } from './registry.js';
 import { accessibleBrains } from '../auth/access.js';
 import { workosUserId } from '../auth/workos.js';
 import { isoDay } from '../dates.js';
@@ -53,7 +53,7 @@ export async function listBrains(workosUserId: string) {
   );
 }
 
-export function registerBrainTools(server: McpServer): void {
+export function registerBrainTools(server: ToolRegistrar): void {
   server.registerTool(
     'list_brains',
     {
@@ -67,7 +67,7 @@ export function registerBrainTools(server: McpServer): void {
     handling(async (_args, mcp) => listBrains(workosUserId(mcp.http?.authInfo))),
   );
 
-  server.registerResource(
+  server.registerResource?.(
     'brains',
     'brain://mine',
     {

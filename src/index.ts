@@ -30,6 +30,7 @@ import { handleGithubWebhook } from './github/webhook.js';
 import { buildServer } from './tools/index.js';
 import { db } from './db/client.js';
 import { sessionsEnabled } from './sessions/db.js';
+import { mountRest } from './api/routes.js';
 import { mountWeb } from './web/routes.js';
 
 const VERSION = '0.1.0';
@@ -135,6 +136,8 @@ export async function createApp(): Promise<express.Express> {
   app.get(resourceUrl.pathname, bearer, (_req, res) => {
     res.status(405).json({ error: 'Streamable HTTP: POST to this endpoint' });
   });
+
+  mountRest(app, tokenVerifier);
 
   // The web pages: your chats, and chats shared with you. Same AuthKit login,
   // as a browser client. Only when the sessions database and a cookie secret

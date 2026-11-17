@@ -7,7 +7,7 @@
  * a chat only to its owner or to the verified email of an active share.
  */
 import { z } from 'zod';
-import type { McpServer, ServerContext } from '@modelcontextprotocol/server';
+import type { ToolRegistrar, ToolCallContext } from './registry.js';
 import { requireBrain } from '../auth/access.js';
 import { verifiedEmailOf, workosProfile } from '../auth/identity.js';
 import { workosUserId } from '../auth/workos.js';
@@ -31,7 +31,7 @@ import {
 } from '../sessions/store.js';
 import { appendClaim } from './edits.js';
 import { brainArg, errorResult, handling, textResult, today, ToolRefusal } from './shared.js';
-import { describeWrite, landEdit } from './write.js';
+import { describeWrite, landEdit, structuredWrite } from './write.js';
 
 const sessionArg = z.string().min(4).describe('Chat id from search_sessions (or source:id), or a share id from list_shared_with_me.');
 const sourceArg = z.string().optional().describe('Only needed when two of your chats share an id: claude, codex, cursor, t3code, chatgpt, claude-ai, grok.');
@@ -44,7 +44,7 @@ export function shareLink(shareId: string): string {
   return `${new URL(loadConfig().mcpResourceUrl).origin}/s/${shareId}`;
 }
 
-async function callerOf(mcp: ServerContext) {
+async function callerOf(mcp: ToolCallContext) {
   const userId = workosUserId(mcp.http?.authInfo);
   return { userId, email: await verifiedEmailOf(userId) };
 }
@@ -100,7 +100,7 @@ function refused(error: unknown) {
   throw error;
 }
 
-export function registerSessionTools(server: McpServer): void {
+export function registerSessionTools(server: ToolRegistrar): void {
   server.registerTool(
     'search_sessions',
     {
@@ -148,7 +148,14 @@ export function registerSessionTools(server: McpServer): void {
         if (!opened) return errorResult(`No chat ${args.session} is available to you.`);
         const { text, next } = renderOpened(opened);
         const { turns: _turns, ownerId: _owner, ...meta } = opened;
-        return textResult(text, { session: meta, next_from_turn: next });
+        return textResult(text, {
+          session: {
+            ...meta,
+            window: { from: opened.window.from, to: next === null ? opened.window.to : next - 1 },
+            turns: opened.turns.filter((_turn, index) => next === null || opened.window.from + index < next),
+          },
+          next_from_turn: next,
+        });
       } catch (error) {
         return refused(error);
       }
@@ -328,7 +335,7 @@ export function registerSessionTools(server: McpServer): void {
             committed: `Committed a claim from the chat to ${brain.id}.`,
             proposed: `Proposed a claim from the chat in ${brain.id}.`,
           }),
-          { brain: brain.id, session: cite, mode: result.mode },
+          { brain: brain.id, session: cite, ...structuredWrite(result) },
         );
       } catch (error) {
         if (error instanceof ToolRefusal) throw error;

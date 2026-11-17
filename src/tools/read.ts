@@ -5,7 +5,7 @@
  * isolation boundary, and test/isolation.test.ts holds it.
  */
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/server';
+import type { ToolRegistrar } from './registry.js';
 import { db } from '../db/client.js';
 import { requireBrain } from '../auth/access.js';
 import { workosUserId } from '../auth/workos.js';
@@ -17,7 +17,7 @@ import { sessionsEnabled } from '../sessions/db.js';
 import { searchSessions, type SessionSummary } from '../sessions/store.js';
 import { renderSummary } from './sessions.js';
 
-export function registerReadTools(server: McpServer, ctx: ToolContext): void {
+export function registerReadTools(server: ToolRegistrar, ctx: ToolContext): void {
   server.registerTool(
     'search',
     {

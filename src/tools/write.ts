@@ -9,8 +9,8 @@
  * says which path ran, so a caller never mistakes an open PR for a recorded fact.
  */
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/server';
-import type { ServerContext } from '@modelcontextprotocol/server';
+import type { ToolRegistrar } from './registry.js';
+import type { ToolCallContext } from './registry.js';
 import { directWriteAllowed, githubLoginForWorkosUser, requireBrain } from '../auth/access.js';
 import { workosUserId } from '../auth/workos.js';
 import { commitDirect, openPullRequest, WriteRefused, type EditPlan, type WriteResult } from '../github/write.js';
@@ -78,7 +78,7 @@ export function describeWrite(result: WriteResult, done: { committed: string; pr
   ].join('\n');
 }
 
-function structuredWrite(result: WriteResult): Record<string, unknown> {
+export function structuredWrite(result: WriteResult): Record<string, unknown> {
   return result.mode === 'commit'
     ? { mode: 'commit', commit: result.commit, recorded: true }
     : {
@@ -90,14 +90,14 @@ function structuredWrite(result: WriteResult): Record<string, unknown> {
 }
 
 /** Who is calling, for the commit message: the client's user agent or OAuth client id. */
-function callerOf(mcp: ServerContext) {
+function callerOf(mcp: ToolCallContext) {
   const auth = mcp.http?.authInfo;
   const userAgent = mcp.http?.req?.headers.get('user-agent')?.slice(0, 80) ?? null;
   const clientId = auth?.clientId && auth.clientId !== 'unknown' ? `OAuth client ${auth.clientId}` : null;
   return { workosUserId: workosUserId(auth), agent: userAgent ?? clientId };
 }
 
-export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
+export function registerWriteTools(server: ToolRegistrar, ctx: ToolContext): void {
   server.registerTool(
     'remember',
     {

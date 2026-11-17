@@ -5,6 +5,7 @@ import { registerFileTools } from './files.js';
 import { registerReadTools } from './read.js';
 import { registerSessionTools } from './sessions.js';
 import { sessionsEnabled } from '../sessions/db.js';
+import type { ToolRegistrar } from './registry.js';
 import { registerWriteTools } from './write.js';
 
 export interface ToolContext {
@@ -83,11 +84,18 @@ export function buildServer(ctx: ToolContext): McpServer {
     },
   );
 
+  registerOperations(server, ctx);
+
+  return server;
+}
+
+/** One set of schemas and domain handlers for both transports. */
+export function registerOperations(server: ToolRegistrar, ctx: ToolContext): void {
+  const files = brainFilesFromEnv();
+  const sessions = sessionsEnabled();
   registerBrainTools(server);
   registerReadTools(server, ctx);
   registerWriteTools(server, ctx);
   if (files) registerFileTools(server, files);
   if (sessions) registerSessionTools(server);
-
-  return server;
 }

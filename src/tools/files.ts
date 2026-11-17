@@ -8,7 +8,7 @@
  * There is deliberately no overwrite and no delete tool.
  */
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/server';
+import type { ToolRegistrar } from './registry.js';
 import { requireBrain, requireBrainWriter } from '../auth/access.js';
 import { workosUserId } from '../auth/workos.js';
 import { FileRefused } from '../files/paths.js';
@@ -128,7 +128,7 @@ export function fileToolHandlers(files: BrainFiles, access: FileAccess = default
   };
 }
 
-export function registerFileTools(server: McpServer, files: BrainFiles, access: FileAccess = defaultAccess): void {
+export function registerFileTools(server: ToolRegistrar, files: BrainFiles, access: FileAccess = defaultAccess): void {
   const handlers = fileToolHandlers(files, access);
 
   server.registerTool(
