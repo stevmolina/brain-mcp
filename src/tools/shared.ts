@@ -56,8 +56,8 @@ export function errorResult(message: string) {
  */
 export function handling<A, C, R>(
   handler: (args: A, ctx: C) => Promise<R>,
-): (args: A, ctx: C) => Promise<R | ReturnType<typeof errorResult>> {
-  return async (args, ctx) => {
+): ((args: A, ctx: C) => Promise<R | ReturnType<typeof errorResult>>) & { domainHandler: typeof handler } {
+  const wrapped = async (args: A, ctx: C) => {
     try {
       return await handler(args, ctx);
     } catch (error) {
@@ -65,6 +65,7 @@ export function handling<A, C, R>(
       throw error;
     }
   };
+  return Object.assign(wrapped, { domainHandler: handler });
 }
 
 /** A refusal the caller should see verbatim: no brain, wrong brain, refused write. */

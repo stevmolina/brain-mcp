@@ -22,3 +22,12 @@ Sibling products: Agent Computer (https://computer.mcpbox.dev) and Agent Session
 There is no separate guide yet. On the home page, Guide jumps to the "Connect your agents" step.
 
 Server address: https://brain.mcpbox.dev/mcp
+
+## REST API
+
+REST base: https://brain.mcpbox.dev/api/v1
+OpenAPI: https://brain.mcpbox.dev/api/v1/openapi.json
+Use Authorization: Bearer with the same WorkOS OAuth access token and /mcp audience as MCP.
+The API covers brains, claims, search, files, writes, pages, sessions and shares.
+GitHub controls brain access. Sessions stay private unless an active share grants the caller's verified email access.
+Claim writes return the PR URL or direct commit URL and mode. File adds need push access and never overwrite.

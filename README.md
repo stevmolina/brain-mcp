@@ -56,3 +56,85 @@ names, descriptions and schemas.
 
 See [AGENTS.md](AGENTS.md) for the rules, the claim format and how to run it, and
 [docs/plan-multi-org.md](docs/plan-multi-org.md) for where multi-user brains go next.
+
+## REST API
+
+Base URL: `https://brain.mcpbox.dev/api/v1`.
+[OpenAPI 3.1](https://brain.mcpbox.dev/api/v1/openapi.json) is public and uses the
+same input schemas as the MCP tools. Optional file and session operations appear
+in that document only when their stores are configured. An unconfigured operation
+returns `503` with code `not_configured`.
+
+Send `Authorization: Bearer <WorkOS access token>`. Use the same OAuth token as
+`/mcp`, with audience `https://brain.mcpbox.dev/mcp`. No new token, scope, or
+permission list is needed. Browser cookies do not grant REST access. The existing
+cookie API under `/api` still serves `/sessions`.
+
+GitHub access checks and their cache are shared with MCP. A reader can read a
+brain and propose a claim change by PR, just as in MCP. File uploads need push
+access because they take effect at once. A registered owner has the same owner
+access as MCP. Direct commits also need the owner's opt-in and a current GitHub
+push check. Sessions remain private to their owner or to the verified email of an
+active share. Sharing returns a preview unless `confirm` is `true`.
+
+All paths below are relative to `/api/v1`. GET inputs are query fields; POST
+inputs are JSON fields. Names and defaults match the corresponding MCP tool.
+Pass the full `brain=owner/repo` value, URL-encoded in a query. Omit it only when
+you have exactly one accessible brain, except for session filters.
+
+| Method | Path | Operation |
+| --- | --- | --- |
+| GET | `/brains` | `list_brains` |
+| GET | `/search` | `search`, including `limit`, `include_superseded`, `include_sessions` |
+| GET | `/claims/get` | `get_claim` with `claim_id` |
+| GET | `/claims/explain` | `explain_claim`, with commit, sources and replacement history |
+| GET | `/files` | `list_files`, with folder, cursor and limit |
+| GET | `/files/get` | `get_file`, with path; returns a signed download link |
+| POST | `/files` | `add_file`; add-only base64 content or signed PUT link |
+| POST | `/remember` | `remember` |
+| POST | `/update-fact` | `update_fact` |
+| POST | `/forget` | `forget` |
+| GET | `/sessions` | `search_sessions`, with query, brain, tool, since, until and limit |
+| GET | `/sessions/show` | `show_session`, with session, source, from_turn and max_turns |
+| POST | `/sessions/save-to-brain` | `save_to_brain` |
+| POST | `/shares` | `share_session`; preview, then confirm |
+| GET | `/shares` | `list_my_shares` |
+| GET | `/shares/received` | `list_shared_with_me` |
+| POST | `/shares/revoke` | `revoke_share` with share id |
+| GET | `/brains/overview` | Page list and 20 recent commits on the default branch |
+| GET | `/pages/get` | Whole markdown page by path on the default branch |
+
+Successful responses are the domain JSON object, without an MCP text envelope.
+Claim writes and save-to-brain return `mode: "pull_request"`, `recorded: false`
+and `pull_request.url`, or `mode: "commit"`, `recorded: true` and `commit.url`.
+Session reads include visible turns, omit the internal owner id, and return
+`next_from_turn` for paging. Files remain add-only. No file delete route exists.
+Overview and page reads use GitHub and can be ahead of the search index. Overview
+refuses a truncated GitHub tree; page reads use the GitHub contents size limit.
+
+Errors have a stable shape:
+
+```json
+{"error":{"code":"not_found","message":"The requested brain is not available."}}
+```
+
+Codes: `unauthorized` (401), `auth_failed` (auth service error), `not_found` (404),
+`invalid_request` or `invalid_json` (400), `body_too_large` (413),
+`operation_refused` (422), `not_configured` (503), `internal_error` (500).
+An inaccessible brain and a missing brain return the same 404 object. Expected
+domain refusals, including missing private sessions, use `operation_refused`.
+Responses use `Cache-Control: no-store`. Request bodies are limited to 16 MB and
+are parsed only after authentication. Upstream failure details are not returned.
+
+```sh
+# TOKEN is an OAuth access token obtained from AuthKit for the MCP resource.
+curl -H "Authorization: Bearer $TOKEN" https://brain.mcpbox.dev/api/v1/brains
+curl -G -H "Authorization: Bearer $TOKEN" \
+  --data-urlencode 'brain=example/notes' --data-urlencode 'query=launch' \
+  https://brain.mcpbox.dev/api/v1/search
+```
+
+Run checks with `pnpm typecheck` and `pnpm test --maxWorkers=1`. Tests need a
+throwaway PostgreSQL database in `DATABASE_URL` and the placeholder auth settings
+shown in `.github/workflows/test.yml`. REST tests sign local JWTs and supply a
+test JWKS. GitHub and R2 adapters are test doubles; no client repo is changed.
