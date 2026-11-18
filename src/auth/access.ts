@@ -8,6 +8,7 @@
  * without a deploy.
  */
 import { loadConfig } from '../config.js';
+import { isPokebotsPrincipal } from './pokebots.js';
 import { db } from '../db/client.js';
 import { appOctokit, githubLoginForAccountId, installationOctokit } from '../github/app.js';
 import { resolveProfile } from '../profiles/index.js';
@@ -44,6 +45,7 @@ function writeCache<T>(cache: Map<string, CacheEntry<T>>, key: string, value: T,
 
 /** The GitHub login behind a WorkOS user, via their linked GitHub identity. */
 export async function githubLoginForWorkosUser(workosUserId: string): Promise<string | null> {
+  if (isPokebotsPrincipal(workosUserId)) return null;
   const cached = readCache(identityCache, workosUserId);
   if (cached !== undefined) return cached;
 

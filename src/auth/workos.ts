@@ -11,7 +11,9 @@
  */
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 import { OAuthError, type AuthInfo, type OAuthMetadata, type OAuthTokenVerifier } from '@modelcontextprotocol/server';
+import { workosProfile } from './identity.js';
 import { loadConfig } from '../config.js';
+import { claimsPokebotsIssuer, createPokebotsVerifier, isPokebotsPrincipal, pokebotsScope } from './pokebots.js';
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
 let metadata: OAuthMetadata | undefined;
@@ -39,11 +41,28 @@ export interface BrainAuthInfo extends AuthInfo {
   };
 }
 
-export function createTokenVerifier(): OAuthTokenVerifier {
+export function createTokenVerifier({ allowPokebots = false } = {}): OAuthTokenVerifier {
   const config = loadConfig();
 
+  const verifyPokebots = createPokebotsVerifier(allowPokebots ? process.env.POKEBOTS_INTEGRATION_PUBLIC_KEY : undefined, config.authkitIssuer);
+
   return {
-    async verifyAccessToken(token: string): Promise<AuthInfo> {
+    async verifyAccessToken(token: string): Promise<BrainAuthInfo> {
+      if (claimsPokebotsIssuer(token)) {
+        const { principal, expiresAt } = await verifyPokebots(token);
+        if (!isPokebotsPrincipal(principal) && (await workosProfile(principal))?.id !== principal) {
+          throw new OAuthError('invalid_token', 'Linked WorkOS account is unavailable');
+        }
+        return {
+          token,
+          clientId: 'pokebots',
+          scopes: [pokebotsScope],
+          expiresAt,
+          resource: new URL(config.mcpResourceUrl),
+          extra: { workosUserId: principal },
+        };
+      }
+
       if (!jwks) {
         const meta = await authorizationServerMetadata();
         jwks = createRemoteJWKSet(new URL(meta.jwks_uri ?? `${config.authkitIssuer}/oauth2/jwks`));
@@ -71,7 +90,9 @@ export function createTokenVerifier(): OAuthTokenVerifier {
         scope?: string;
       };
 
-      if (!claims.sub) throw new OAuthError('invalid_token', 'Token has no subject');
+      if (!claims.sub || isPokebotsPrincipal(claims.sub)) {
+        throw new OAuthError('invalid_token', 'Token has no valid WorkOS subject');
+      }
 
       const info: BrainAuthInfo = {
         token,

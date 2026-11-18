@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { exportJWK, generateKeyPair, SignJWT } from 'jose';
+import { exportJWK, exportSPKI, generateKeyPair, SignJWT } from 'jose';
 
 process.env.SESSIONS_DATABASE_URL = process.env.DATABASE_URL;
 process.env.WEB_SESSION_SECRET = 'rest-test-secret-0123456789abcdef-0123456789';
@@ -33,7 +33,15 @@ const claim = claimId(brain, 'wiki/index.md', 'Fictional launch is Tuesday.');
 let server: Server;
 let base: string;
 let key: Awaited<ReturnType<typeof generateKeyPair>>;
+let pokebotsKey: Awaited<ReturnType<typeof generateKeyPair>>;
 const realFetch = globalThis.fetch;
+async function pokebotsToken(aud: string | string[], linked?: string) {
+  const now = Math.floor(Date.now() / 1000);
+  return new SignJWT({ scope: 'integration:use', linked_workos_sub: linked, linked_workos_iss: linked ? issuer : undefined })
+    .setProtectedHeader({ alg: 'RS256' }).setSubject('pokebots:test_account')
+    .setIssuer('urn:pokebots:integrations').setAudience(aud)
+    .setIssuedAt(now).setExpirationTime(now + 300).sign(pokebotsKey.privateKey);
+}
 const issuer = process.env.AUTHKIT_ISSUER!;
 const audience = process.env.MCP_RESOURCE_URL!;
 async function token(user = 'rest-owner', overrides: { exp?: number; aud?: string; iss?: string } = {}) {
@@ -56,6 +64,8 @@ async function clean() {
 
 beforeAll(async () => {
   key = await generateKeyPair('RS256');
+  pokebotsKey = await generateKeyPair('RS256');
+  vi.stubEnv('POKEBOTS_INTEGRATION_PUBLIC_KEY', (await exportSPKI(pokebotsKey.publicKey)).replace(/\n/g, '\\n'));
   const jwk = { ...await exportJWK(key.publicKey), kid: 'rest-test', alg: 'RS256', use: 'sig' };
   vi.stubGlobal('fetch', async (url: string | URL | Request, init?: RequestInit) => {
     const target = String(url);
@@ -69,7 +79,7 @@ beforeAll(async () => {
   });
   request.mockImplementation(async (route: string, args: Record<string, string>) => {
     if (route.endsWith('/collaborators/{username}')) {
-      if (args.repo === 'alpha' && ['rest-reader', 'rest-writer'].includes(args.username!)) return { status: 204 };
+      if (args.repo === 'alpha' && ['rest-reader', 'rest-writer', 'user_TestReader'].includes(args.username!)) return { status: 204 };
       throw Object.assign(new Error('missing'), { status: 404 });
     }
     if (route.endsWith('/permission')) return { data: { permission: ['rest-writer', 'rest-owner'].includes(args.username!) ? 'write' : 'read' } };
@@ -94,10 +104,34 @@ beforeAll(async () => {
 });
 afterAll(async () => {
   if (server) await new Promise<void>((resolve) => server.close(() => resolve()));
-  await clean(); await closeSessionsDb(); await closeDb(); vi.unstubAllGlobals();
+  await clean(); await closeSessionsDb(); await closeDb(); vi.unstubAllGlobals(); vi.unstubAllEnvs();
 });
 
 describe('REST authentication and errors', () => {
+  it('accepts native Pokebots tokens on REST and MCP and rejects other audiences', async () => {
+    const mcpPath = new URL(audience).pathname;
+    const headers = { authorization: `Bearer ${await pokebotsToken('brain')}` };
+    const response = await realFetch(`${base}/api/v1/brains`, { headers });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ brains: [] });
+    expect((await realFetch(`${base}${mcpPath}`, { headers })).status).toBe(405);
+
+    for (const aud of ['another-service', ['brain']]) {
+      const invalid = { authorization: `Bearer ${await pokebotsToken(aud)}` };
+      expect((await realFetch(`${base}/api/v1/brains`, { headers: invalid })).status).toBe(401);
+      expect((await realFetch(`${base}${mcpPath}`, { headers: invalid })).status).toBe(401);
+    }
+  });
+  it('uses a linked principal only within its existing brain permissions', async () => {
+    const headers = { authorization: `Bearer ${await pokebotsToken('brain', 'user_TestReader')}` };
+    const allowed = await realFetch(`${base}/api/v1/search?brain=${brain}&query=launch`, { headers });
+    expect(allowed.status).toBe(200);
+    const denied = await realFetch(`${base}/api/v1/search?brain=${otherBrain}&query=launch`, { headers });
+    expect(denied.status).toBe(404);
+    const native = { authorization: `Bearer ${await pokebotsToken('brain')}` };
+    const privateSession = await realFetch(`${base}/api/v1/sessions/show?session=rest-chat-1`, { headers: native });
+    expect(privateSession.status).toBe(422);
+  });
   it('publishes OpenAPI without auth and describes every enabled operation', async () => {
     const response = await realFetch(`${base}/api/v1/openapi.json`);
     const doc = await response.json();

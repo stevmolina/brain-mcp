@@ -104,7 +104,7 @@ export async function createApp(): Promise<express.Express> {
     }),
   );
 
-  const tokenVerifier = createTokenVerifier();
+  const tokenVerifier = createTokenVerifier({ allowPokebots: true });
   const bearer = requireBearerAuth({
     verifier: tokenVerifier,
     resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(resourceUrl),
@@ -143,7 +143,7 @@ export async function createApp(): Promise<express.Express> {
   // as a browser client. Only when the sessions database and a cookie secret
   // are both configured; otherwise the server is exactly as before.
   const web = loadWebConfig();
-  if (web && sessionsEnabled()) mountWeb(app, web, tokenVerifier, landingRoot());
+  if (web && sessionsEnabled()) mountWeb(app, web, createTokenVerifier(), landingRoot());
 
   // After every API and discovery route, so a file in site/ cannot shadow
   // /mcp, /healthz, /readyz, /webhooks/github, or the OAuth documents.
