@@ -17,11 +17,9 @@ vi.mock('../src/github/app.js', () => ({
 }));
 vi.mock('../src/files/index.js', () => ({ brainFilesFromEnv: () => ({ list: fileList, get: fileGet, add: fileAdd }) }));
 vi.mock('../src/github/write.js', async (original) => ({ ...await original<object>(), openPullRequest: pr, commitDirect: vi.fn(async () => ({ mode: 'commit', commit: { sha: 'direct123', branch: 'main', url: 'https://github.com/example/notes/commit/direct123', page: 'wiki/index.md' } })) }));
-vi.mock('../src/auth/identity.js', () => ({
-  verifiedEmailOf: async (id: string) => `${id}@rest.invalid`,
-  workosProfile: async (id: string) => ({ id, verifiedEmail: `${id}@rest.invalid`, name: id }),
-}));
+const deletedWorkosUsers = new Set<string>();
 
+const { workosProfile } = await import('../src/auth/identity.js');
 const { db, closeDb } = await import('../src/db/client.js');
 const { migrate } = await import('../src/db/migrate.js');
 const { sessionsDb, migrateSessions, closeSessionsDb } = await import('../src/sessions/db.js');
@@ -73,7 +71,9 @@ beforeAll(async () => {
     if (target === `${issuer}/oauth2/jwks`) return Response.json({ keys: [jwk] });
     if (target.includes('api.workos.com/user_management/users/')) {
       const id = target.split('/users/')[1]!.split('/')[0];
-      return Response.json([{ provider: 'GitHubOAuth', idp_id: id }]);
+      if (target.endsWith('/identities')) return Response.json([{ provider: 'GitHubOAuth', idp_id: id }]);
+      if (deletedWorkosUsers.has(id)) return new Response(null, { status: 404 });
+      return Response.json({ id, email: `${id}@rest.invalid`, email_verified: true, first_name: id });
     }
     return realFetch(url, init);
   });
@@ -131,6 +131,17 @@ describe('REST authentication and errors', () => {
     const native = { authorization: `Bearer ${await pokebotsToken('brain')}` };
     const privateSession = await realFetch(`${base}/api/v1/sessions/show?session=rest-chat-1`, { headers: native });
     expect(privateSession.status).toBe(422);
+  });
+  it('rejects a deleted WorkOS account even with a cached profile', async () => {
+    const subject = 'user_TestReader';
+    const headers = { authorization: `Bearer ${await pokebotsToken('brain', subject)}` };
+    expect(await workosProfile(subject)).toMatchObject({ id: subject });
+    deletedWorkosUsers.add(subject);
+    try {
+      expect((await realFetch(`${base}/api/v1/brains`, { headers })).status).toBe(401);
+    } finally {
+      deletedWorkosUsers.delete(subject);
+    }
   });
   it('publishes OpenAPI without auth and describes every enabled operation', async () => {
     const response = await realFetch(`${base}/api/v1/openapi.json`);

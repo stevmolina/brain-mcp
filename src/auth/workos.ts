@@ -50,7 +50,7 @@ export function createTokenVerifier({ allowPokebots = false } = {}): OAuthTokenV
     async verifyAccessToken(token: string): Promise<BrainAuthInfo> {
       if (claimsPokebotsIssuer(token)) {
         const { principal, expiresAt } = await verifyPokebots(token);
-        if (!isPokebotsPrincipal(principal) && (await workosProfile(principal))?.id !== principal) {
+        if (!isPokebotsPrincipal(principal) && (await workosProfile(principal, { fresh: true }))?.id !== principal) {
           throw new OAuthError('invalid_token', 'Linked WorkOS account is unavailable');
         }
         return {
