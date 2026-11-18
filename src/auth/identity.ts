@@ -4,6 +4,7 @@
  * verified can open one; an unverified address gets nothing.
  */
 import { loadConfig } from '../config.js';
+import { isPokebotsPrincipal } from './pokebots.js';
 
 export interface WorkosProfile {
   id: string;
@@ -14,9 +15,10 @@ export interface WorkosProfile {
 
 const cache = new Map<string, { value: WorkosProfile | null; expiresAt: number }>();
 
-export async function workosProfile(userId: string): Promise<WorkosProfile | null> {
+export async function workosProfile(userId: string, options?: { fresh: true }): Promise<WorkosProfile | null> {
+  if (isPokebotsPrincipal(userId)) return null;
   const hit = cache.get(userId);
-  if (hit && hit.expiresAt > Date.now()) return hit.value;
+  if (!options?.fresh && hit && hit.expiresAt > Date.now()) return hit.value;
 
   const { workosApiKey } = loadConfig();
   let value: WorkosProfile | null = null;

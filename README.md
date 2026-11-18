@@ -138,3 +138,13 @@ Run checks with `pnpm typecheck` and `pnpm test --maxWorkers=1`. Tests need a
 throwaway PostgreSQL database in `DATABASE_URL` and the placeholder auth settings
 shown in `.github/workflows/test.yml`. REST tests sign local JWTs and supply a
 test JWKS. GitHub and R2 adapters are test doubles; no client repo is changed.
+
+### Pokebots sign-in
+
+Set `POKEBOTS_INTEGRATION_PUBLIC_KEY` to the account API's public RSA PEM to
+accept short-lived Pokebots credentials at `/mcp` and `/api/v1`. The account
+service can include a verified WorkOS link. Brain checks the link issuer
+against its own WorkOS issuer and checks that the WorkOS user still exists.
+Brain and session permissions apply to that existing WorkOS ID. A Pokebots
+account without a link can sign in, and its resource list includes only
+resources permitted for its own account.
