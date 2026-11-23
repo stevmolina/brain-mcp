@@ -104,6 +104,9 @@ export function mountWeb(app: express.Express, web: WebConfig, verifier: OAuthTo
     const sessions = await searchSessions(userId, {
       query: str(req.query.q),
       brain: str(req.query.brain),
+      repo: str(req.query.repo),
+      machine: str(req.query.machine),
+      cwd: str(req.query.cwd),
       tool: str(req.query.tool),
       since: str(req.query.since),
       until: str(req.query.until),

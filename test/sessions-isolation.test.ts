@@ -63,6 +63,63 @@ afterAll(async () => {
   await closeSessionsDb();
 });
 
+describe('repo, machine and cwd filters', () => {
+  const POKE = 'alice-poke-0004';
+  const SERVER = 'alice-server-0005';
+  const BOB_POKE = 'bob-poke-0006';
+
+  beforeAll(async () => {
+    await seed(POKE, ALICE, null, 'Pokebots on the laptop', ['Fix the sidebar.', 'Done.']);
+    await seed(SERVER, ALICE, null, 'Pokebots on a server', ['Restart the agent.', 'Done.']);
+    await seed(BOB_POKE, BOB, null, 'Bob also works on pokebots', ['Another pokebots chat.', 'Done.']);
+    const tag = (id: string, machine: string, cwd: string, repos: string[]) =>
+      sessionsDb().query('update sessions set machine = $3, cwd = $4, repos = $5 where source = $1 and id = $2', [SRC, id, machine, cwd, repos]);
+    await tag(POKE, 'laptop', '/Users/a/dev/pokebots', ['stevmolina/pokebots']);
+    await tag(SERVER, 'server-1', '/data/OpenBot/Agents/agent-abc', ['stevmolina/pokebots', 'acme/other']);
+    await tag(BOB_POKE, 'laptop', '/data/OpenBot/Agents/agent-bob', ['stevmolina/pokebots']);
+  });
+
+  const ids = async (options: Parameters<typeof store.searchSessions>[1]) =>
+    (await store.searchSessions(ALICE, options)).map((s) => s.id).filter((id) => [POKE, SERVER].includes(id)).sort();
+
+  it('finds a repo across machines, by full name in any case or by bare name', async () => {
+    expect(await ids({ repo: 'stevmolina/pokebots' })).toEqual([POKE, SERVER]);
+    expect(await ids({ repo: 'StevMolina/Pokebots' })).toEqual([POKE, SERVER]);
+    expect(await ids({ repo: 'pokebots' })).toEqual([POKE, SERVER]);
+    expect(await ids({ repo: 'acme/other' })).toEqual([SERVER]);
+    expect(await ids({ repo: 'other' })).toEqual([SERVER]);
+    expect(await ids({ repo: 'bots' })).toEqual([]);
+  });
+
+  it('filters by machine and by cwd substring, and combines with a query', async () => {
+    expect(await ids({ machine: 'server-1' })).toEqual([SERVER]);
+    expect(await ids({ cwd: '/data/OpenBot' })).toEqual([SERVER]);
+    expect(await ids({ cwd: 'DEV/POKEBOTS' })).toEqual([POKE]);
+    expect(await ids({ cwd: '%' })).toEqual([]);
+    expect(await ids({ repo: 'pokebots', query: 'Restart agent' })).toEqual([SERVER]);
+  });
+
+  it('returns machine and repos in hits and in an opened chat', async () => {
+    const [hit] = await store.searchSessions(ALICE, { repo: 'acme/other' });
+    expect(hit).toMatchObject({ machine: 'server-1', repos: ['stevmolina/pokebots', 'acme/other'] });
+    const opened = await store.openSession(alice, { session: SERVER });
+    expect(opened).toMatchObject({ machine: 'server-1', repos: ['stevmolina/pokebots', 'acme/other'] });
+  });
+
+  it('never returns another person\'s chat, even for the same repo', async () => {
+    const all = (await store.searchSessions(ALICE, { repo: 'pokebots', limit: 50 })).map((s) => s.id);
+    expect(all).not.toContain(BOB_POKE);
+    expect((await store.searchSessions(BOB, { repo: 'pokebots', limit: 50 })).map((s) => s.id)).toContain(BOB_POKE);
+  });
+
+  it('a chat tagged by an older client (no repos) simply does not match', async () => {
+    await sessionsDb().query('update sessions set repos = null where source = $1 and id = $2', [SRC, POKE]);
+    expect(await ids({ repo: 'pokebots' })).toEqual([SERVER]);
+    const [old] = await store.searchSessions(ALICE, { cwd: 'dev/pokebots' });
+    expect(old?.repos).toEqual([]);
+  });
+});
+
 describe('before any share, Bob sees none of Alice\'s chats', () => {
   it('search for her words finds nothing', async () => {
     expect(await store.searchSessions(BOB, { query: 'pelican Frankfurt' })).toEqual([]);
