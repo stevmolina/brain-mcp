@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   turns jsonb NOT NULL,
   owner text,
   brain text,
+  repos text[],
   search tsvector GENERATED ALWAYS AS (
     to_tsvector('english', coalesce(title, '') || ' ' || coalesce(body, ''))
   ) STORED,

@@ -26,6 +26,10 @@ export interface SessionSummary {
   title: string;
   brain: string | null;
   cwd: string | null;
+  /** The host the chat was last pushed from, e.g. a laptop or a server name. */
+  machine: string | null;
+  /** GitHub repos (owner/name, lower case) the chat belongs to. */
+  repos: string[];
   started_at: string | null;
   updated_at: string | null;
   turn_count: number;
@@ -64,6 +68,12 @@ export interface SearchOptions {
   query?: string;
   brain?: string;
   tool?: string;
+  /** A GitHub repo, `owner/name`, or a bare name that matches under any owner. */
+  repo?: string;
+  /** Exact host name the chat was pushed from. */
+  machine?: string;
+  /** Text the chat's folder contains, any case: a path, a folder name or `/data/OpenBot`. */
+  cwd?: string;
   since?: string;
   until?: string;
   limit?: number;
@@ -91,6 +101,8 @@ interface SummaryRow {
   title: string | null;
   brain: string | null;
   cwd: string | null;
+  machine: string | null;
+  repos: string[] | null;
   started_at: Date | null;
   updated_at: Date | null;
   turn_count: number;
@@ -105,6 +117,8 @@ function toSummary(row: SummaryRow): SessionSummary {
     title: row.title?.trim() || '(untitled chat)',
     brain: row.brain,
     cwd: row.cwd,
+    machine: row.machine ?? null,
+    repos: row.repos ?? [],
     started_at: iso(row.started_at),
     updated_at: iso(row.updated_at),
     turn_count: Number(row.turn_count),
@@ -112,7 +126,7 @@ function toSummary(row: SummaryRow): SessionSummary {
   };
 }
 
-const SUMMARY_COLUMNS = `s.source, s.id, s.provider, s.title, s.brain, s.cwd, s.started_at, s.updated_at,
+const SUMMARY_COLUMNS = `s.source, s.id, s.provider, s.title, s.brain, s.cwd, s.machine, s.repos, s.started_at, s.updated_at,
   jsonb_array_length(s.turns) as turn_count`;
 
 /**
@@ -123,26 +137,40 @@ const SUMMARY_COLUMNS = `s.source, s.id, s.provider, s.title, s.brain, s.cwd, s.
 export async function searchSessions(ownerId: string, options: SearchOptions): Promise<SessionSummary[]> {
   const query = options.query?.trim() ?? '';
   const limit = Math.min(Math.max(options.limit ?? 20, 1), 100);
+  const repo = options.repo?.trim().toLowerCase().replace(/\.git$/, '') || null;
+  // A full name uses the GIN index on repos. A bare name matches the repo name
+  // under any owner.
+  const repoFilter = !repo
+    ? '$6::text is null'
+    : repo.includes('/')
+      ? 's.repos @> array[$6::text]'
+      : `exists (select 1 from unnest(s.repos) r where right(r, length($6::text) + 1) = '/' || $6::text)`;
   const filters = `s.owner = $1
           and ($2::text is null or s.brain = $2)
           and ($3::text is null or s.source = $3 or s.provider = $3)
           and ($4::timestamptz is null or coalesce(s.updated_at, s.started_at) >= $4)
-          and ($5::timestamptz is null or coalesce(s.started_at, s.updated_at) < $5)`;
-  const args = [ownerId, options.brain || null, options.tool || null, options.since || null, endOfDay(options.until), limit];
+          and ($5::timestamptz is null or coalesce(s.started_at, s.updated_at) < $5)
+          and (${repoFilter})
+          and ($7::text is null or s.machine = $7)
+          and ($8::text is null or s.cwd ilike '%' || $8 || '%')`;
+  const args = [
+    ownerId, options.brain || null, options.tool || null, options.since || null, endOfDay(options.until),
+    repo, options.machine?.trim() || null, escapeLike(options.cwd?.trim() || null), limit,
+  ];
 
   // Two plans on purpose. The page is picked from narrow columns only; the
   // turn count, title and snippet are read for that page alone, because they
   // unpack the turns and body (up to a quarter of a megabyte per chat).
   const sql = query
     ? `with hits as (
-         select s.source, s.id, ts_rank(s.search, websearch_to_tsquery('english', $7)) as rank,
+         select s.source, s.id, ts_rank(s.search, websearch_to_tsquery('english', $10)) as rank,
                 coalesce(s.updated_at, s.started_at) as at
            from sessions s
-          where ${filters} and s.search @@ websearch_to_tsquery('english', $7)
+          where ${filters} and s.search @@ websearch_to_tsquery('english', $10)
           order by rank desc, at desc nulls last
-          limit $6)
+          limit $9)
        select ${SUMMARY_COLUMNS},
-              ts_headline('english', s.body, websearch_to_tsquery('english', $7), 'MaxWords=30, MinWords=10, MaxFragments=2') as snippet
+              ts_headline('english', s.body, websearch_to_tsquery('english', $10), 'MaxWords=30, MinWords=10, MaxFragments=2') as snippet
          from hits h join sessions s on s.source = h.source and s.id = h.id and s.owner = $1
         order by h.rank desc, h.at desc nulls last`
     : `with hits as (
@@ -150,7 +178,7 @@ export async function searchSessions(ownerId: string, options: SearchOptions): P
            from sessions s
           where ${filters}
           order by at desc nulls last
-          limit $6)
+          limit $9)
        select ${SUMMARY_COLUMNS},
               left(coalesce((select t->>'text' from jsonb_array_elements(s.turns) t
                               where t->>'role' = 'user' limit 1), ''), 240) as snippet
@@ -158,6 +186,11 @@ export async function searchSessions(ownerId: string, options: SearchOptions): P
         order by h.at desc nulls last`;
   const { rows } = await sessionsDb().query<SummaryRow>(sql, query ? [...args, query] : args);
   return rows.map(toSummary);
+}
+
+/** Makes text safe inside an ILIKE pattern. */
+function escapeLike(text: string | null): string | null {
+  return text ? text.replace(/[\\%_]/g, (c) => `\\${c}`) : null;
 }
 
 /** `until` is a day, inclusive: everything before the next midnight UTC. */
@@ -317,7 +350,7 @@ export async function openSession(
     if ((grant.share.turn_from ?? 1) > 1) {
       summary = { ...summary, title: `Part of a chat (turns ${grant.share.turn_from} to ${grant.share.turn_to ?? summary.turn_count})` };
     }
-    summary = { ...summary, cwd: null };
+    summary = { ...summary, cwd: null, machine: null, repos: [] };
     share = { ...toShare(grant.share), title: summary.title };
     ownerId = grant.share.owner;
   }

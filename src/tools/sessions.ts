@@ -54,7 +54,7 @@ function day(value: string | null): string {
 }
 
 export function renderSummary(s: SessionSummary): string {
-  const where = s.brain ? ` · ${s.brain}` : '';
+  const where = [s.brain, s.repos.length ? s.repos.join(', ') : null, s.machine].filter(Boolean).map((part) => ` · ${part}`).join('');
   const tool = s.provider && s.provider !== s.source ? `${s.source}/${s.provider}` : s.source;
   const lines = [`- ${s.title}`, `  ${s.source}:${s.id} · ${tool} · ${day(s.updated_at ?? s.started_at)} · ${s.turn_count} turns${where}`];
   if (s.snippet) lines.push(`  ${s.snippet.slice(0, 320)}`);
@@ -72,6 +72,7 @@ export function renderOpened(opened: OpenedSession): { text: string; next: numbe
   const header = [
     `${opened.title}`,
     `${opened.source}:${opened.id} · ${opened.provider} · ${day(opened.started_at)} · ${opened.brain ?? 'no brain'}`,
+    ...(opened.repos.length || opened.machine ? [`repos: ${opened.repos.join(', ') || 'none'} · machine: ${opened.machine ?? 'unknown'}`] : []),
     opened.access === 'shared'
       ? `Shared with you (turns ${opened.allowed.from}-${opened.allowed.to} of ${opened.turn_count}). Read only.`
       : `Your chat, ${opened.turn_count} turns.`,
@@ -107,9 +108,15 @@ export function registerSessionTools(server: ToolRegistrar): void {
       title: 'Search your chats',
       description:
         'Search your own past agent chats (Claude Code, Codex, Cursor, T3, imported ChatGPT, Claude.ai and Grok) when earlier context would help: a decision, a prior attempt, what was already tried. ' +
-        'Only your chats, never anyone else\'s. An empty query lists the most recent. Filter by `brain` (the project the chat ran in), `tool`, and dates.',
+        'Only your chats, never anyone else\'s. An empty query lists the most recent. ' +
+        'Filter by `repo` (the GitHub repo a chat belongs to, e.g. "stevmolina/pokebots", from its checkout or the repos its commands touched; a bare name like "pokebots" works too), ' +
+        '`machine` (the computer or server it ran on), `cwd` (any part of the folder it ran in, e.g. "/data/OpenBot"), `brain` (the knowledge project it is filed under), `tool`, and dates. ' +
+        'Each hit lists its repos and machine. Prefer `repo` to find work on one project across every machine.',
       inputSchema: z.object({
         query: z.string().default('').describe('Words to search for. Empty lists the most recent chats.'),
+        repo: z.string().optional().describe('Only chats tagged with this GitHub repo, "owner/name" (any case), or a bare repo name to match any owner.'),
+        machine: z.string().optional().describe('Only chats pushed from this machine (host name, exact), e.g. "contabo-vps".'),
+        cwd: z.string().optional().describe('Only chats whose folder contains this text, any case, e.g. "/data/OpenBot" or "pokebots".'),
         brain: z.string().optional().describe('Only chats tagged with this brain id, e.g. "owner/repo".'),
         tool: z.string().optional().describe('Only chats from this tool: claude, codex, cursor, t3code, grok, chatgpt, claude-ai.'),
         since: dayArg.describe('Only chats active on or after this day (YYYY-MM-DD).'),
