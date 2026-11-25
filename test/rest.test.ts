@@ -258,3 +258,35 @@ describe('brain, claims, pages, files, writes, sessions and shares', () => {
     expect((await realFetch(`${base}/mcp`)).status).toBe(401);
   });
 });
+
+describe('personal access tokens over REST and MCP', () => {
+  it('lets an unscoped token act as its user and a scoped one reach only its brains', async () => {
+    const { createAccessToken, revokeAccessToken } = await import('../src/auth/tokens.js');
+    const get = (path: string, bearer: string) => realFetch(`${base}/api/v1${path}`, { headers: { authorization: `Bearer ${bearer}` } });
+    const unscoped = await createAccessToken({ workosUserId: 'user_RestOwnerToken', name: 'rest token all' });
+    await db().query("update brains set owner_workos_user_id = 'user_RestOwnerToken' where id = $1", [brain]);
+    const scoped = await createAccessToken({ workosUserId: 'user_RestOwnerToken', name: 'rest token other', brains: [otherBrain] });
+    try {
+      expect((await get(`/search?brain=${brain}&query=launch`, unscoped.token)).status).toBe(200);
+      const denied = await get(`/search?brain=${brain}&query=launch`, scoped.token);
+      const missing = await get('/search?brain=rest-test/missing&query=launch', scoped.token);
+      expect(denied.status).toBe(404);
+      expect(await denied.json()).toEqual(await missing.json());
+      expect((await (await get('/brains', scoped.token)).json()).brains).toEqual([]);
+      const mcp = await realFetch(`${base}/mcp`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${scoped.token}`, 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'search', arguments: { brain, query: 'launch' } } }),
+      });
+      const text = await mcp.text();
+      expect(text).toContain('"isError":true');
+      expect(text).not.toContain('Fictional launch is Tuesday');
+      await revokeAccessToken(unscoped.id);
+      expect((await get(`/search?brain=${brain}&query=launch`, unscoped.token)).status).toBe(401);
+    } finally {
+      await db().query("update brains set owner_workos_user_id = 'rest-owner' where id = $1", [brain]);
+      await revokeAccessToken(unscoped.id);
+      await revokeAccessToken(scoped.id);
+    }
+  });
+});

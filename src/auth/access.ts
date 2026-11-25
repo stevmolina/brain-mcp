@@ -9,6 +9,7 @@
  */
 import { loadConfig } from '../config.js';
 import { isPokebotsPrincipal } from './pokebots.js';
+import { isScopedPrincipal, scopeOf } from './tokens.js';
 import { db } from '../db/client.js';
 import { appOctokit, githubLoginForAccountId, installationOctokit } from '../github/app.js';
 import { resolveProfile } from '../profiles/index.js';
@@ -43,8 +44,27 @@ function writeCache<T>(cache: Map<string, CacheEntry<T>>, key: string, value: T,
   return value;
 }
 
+/**
+ * Who a principal acts as, and which brains it is limited to. A WorkOS user id
+ * is itself, unlimited. A scoped token (`pat:<id>`) is its user, limited to
+ * the token's brains, read fresh each time; null when the token is gone.
+ */
+interface Caller {
+  userId: string;
+  allow: Set<string> | null;
+}
+async function resolveCaller(principal: string): Promise<Caller | null> {
+  if (!isScopedPrincipal(principal)) return { userId: principal, allow: null };
+  const scope = await scopeOf(principal);
+  return scope ? { userId: scope.workosUserId, allow: scope.brains } : null;
+}
+
 /** The GitHub login behind a WorkOS user, via their linked GitHub identity. */
 export async function githubLoginForWorkosUser(workosUserId: string): Promise<string | null> {
+  if (isScopedPrincipal(workosUserId)) {
+    const caller = await resolveCaller(workosUserId);
+    return caller ? githubLoginForWorkosUser(caller.userId) : null;
+  }
   if (isPokebotsPrincipal(workosUserId)) return null;
   const cached = readCache(identityCache, workosUserId);
   if (cached !== undefined) return cached;
@@ -155,12 +175,20 @@ export async function getBrain(brainId: string): Promise<BrainRow | null> {
   return rows[0] ?? null;
 }
 
-/** Every brain this WorkOS user may read, checked against GitHub each time. */
-export async function accessibleBrains(workosUserId: string): Promise<BrainRow[]> {
+/**
+ * Every brain this principal may read, checked against GitHub each time. A
+ * scoped token sees only the brains on its list, and of those only the ones
+ * its user can read today.
+ */
+export async function accessibleBrains(principal: string): Promise<BrainRow[]> {
+  const caller = await resolveCaller(principal);
+  if (!caller) return [];
+  const workosUserId = caller.userId;
   const login = await githubLoginForWorkosUser(workosUserId);
   const { rows } = await db().query<BrainRow>('select * from brains order by id');
   const allowed: BrainRow[] = [];
   for (const brain of rows) {
+    if (caller.allow && !caller.allow.has(brain.id)) continue;
     if (brain.owner_workos_user_id === workosUserId || (await canReadBrain(brain, login))) {
       allowed.push(brain);
     }
@@ -172,12 +200,15 @@ export async function accessibleBrains(workosUserId: string): Promise<BrainRow[]
  * Resolves the brain a call is scoped to and proves the caller may read it.
  * Every tool goes through here; nothing else loads a brain row for a request.
  */
-export async function requireBrain(workosUserId: string, requested?: string): Promise<BrainRow> {
+export async function requireBrain(principal: string, requested?: string): Promise<BrainRow> {
   if (requested) {
-    const brain = await getBrain(requested);
-    // Same message whether the brain is missing or merely forbidden: a caller
-    // must not be able to enumerate other tenants' brain ids.
+    // Same message whether the brain is missing, forbidden or outside a
+    // token's list: a caller must not be able to enumerate brain ids.
     const denied = new Forbidden(`No brain "${requested}" is available to you.`);
+    const caller = await resolveCaller(principal);
+    if (!caller || (caller.allow && !caller.allow.has(requested))) throw denied;
+    const workosUserId = caller.userId;
+    const brain = await getBrain(requested);
     if (!brain) throw denied;
     if (brain.owner_workos_user_id === workosUserId) return brain;
     const login = await githubLoginForWorkosUser(workosUserId);
@@ -185,7 +216,7 @@ export async function requireBrain(workosUserId: string, requested?: string): Pr
     throw denied;
   }
 
-  const brains = await accessibleBrains(workosUserId);
+  const brains = await accessibleBrains(principal);
   if (brains.length === 1) return brains[0]!;
   if (brains.length === 0) {
     throw new Forbidden(
@@ -201,10 +232,12 @@ export async function requireBrain(workosUserId: string, requested?: string): Pr
  * requireBrain, then proves the caller may also push to the brain's repo. Used
  * by writes that land without a pull request, such as adding a file.
  */
-export async function requireBrainWriter(workosUserId: string, requested?: string): Promise<BrainRow> {
-  const brain = await requireBrain(workosUserId, requested);
-  if (brain.owner_workos_user_id === workosUserId) return brain;
-  const login = await githubLoginForWorkosUser(workosUserId);
+export async function requireBrainWriter(principal: string, requested?: string): Promise<BrainRow> {
+  const brain = await requireBrain(principal, requested);
+  const caller = await resolveCaller(principal);
+  if (!caller) throw new Forbidden(`No brain "${brain.id}" is available to you.`);
+  if (brain.owner_workos_user_id === caller.userId) return brain;
+  const login = await githubLoginForWorkosUser(caller.userId);
   if (await canWriteBrain(brain, login)) return brain;
   throw new Forbidden(`You can read ${brain.id} but not write to it: adding files needs push access to its repo.`);
 }
@@ -233,6 +266,9 @@ export async function directWriteAllowed(
   githubLogin: string | null,
 ): Promise<boolean> {
   if (!resolveProfile(brain.profile).directWrites) return false;
+  // A scoped token is a bot acting for its owner on a few brains. Its writes
+  // are proposals a person reviews, never commits to main.
+  if (isScopedPrincipal(workosUserId)) return false;
   if (!githubLogin || !isBrainOwner(brain, workosUserId, githubLogin)) return false;
   return githubSaysCanPush(brain, githubLogin);
 }

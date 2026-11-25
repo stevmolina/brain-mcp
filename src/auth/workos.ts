@@ -14,6 +14,7 @@ import { OAuthError, type AuthInfo, type OAuthMetadata, type OAuthTokenVerifier 
 import { workosProfile } from './identity.js';
 import { loadConfig } from '../config.js';
 import { claimsPokebotsIssuer, createPokebotsVerifier, isPokebotsPrincipal, pokebotsScope } from './pokebots.js';
+import { isScopedPrincipal, looksLikeAccessToken, principalForToken, scopeOf } from './tokens.js';
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
 let metadata: OAuthMetadata | undefined;
@@ -41,13 +42,38 @@ export interface BrainAuthInfo extends AuthInfo {
   };
 }
 
-export function createTokenVerifier({ allowPokebots = false } = {}): OAuthTokenVerifier {
+/**
+ * `allowPokebots` and `allowAccessTokens` are for the MCP and REST endpoints
+ * only. The browser sign-in takes AuthKit tokens and nothing else.
+ */
+export function createTokenVerifier({ allowPokebots = false, allowAccessTokens = false } = {}): OAuthTokenVerifier {
   const config = loadConfig();
 
   const verifyPokebots = createPokebotsVerifier(allowPokebots ? process.env.POKEBOTS_INTEGRATION_PUBLIC_KEY : undefined, config.authkitIssuer);
 
   return {
     async verifyAccessToken(token: string): Promise<BrainAuthInfo> {
+      if (looksLikeAccessToken(token)) {
+        const principal = allowAccessTokens ? await principalForToken(token) : null;
+        if (!principal) throw new OAuthError('invalid_token', 'Unknown or revoked access token');
+        // A token dies with its WorkOS user. Cached ten minutes, like every
+        // profile read, so a hook does not cost a WorkOS call per request.
+        const user = isScopedPrincipal(principal) ? (await scopeOf(principal))?.workosUserId : principal;
+        if (!user || (await workosProfile(user))?.id !== user) {
+          throw new OAuthError('invalid_token', 'The access token\'s account is unavailable');
+        }
+        return {
+          token,
+          clientId: 'access-token',
+          scopes: [],
+          // Checked against the database on every request, so a short nominal
+          // expiry costs nothing and satisfies the bearer middleware.
+          expiresAt: Math.floor(Date.now() / 1000) + 300,
+          resource: new URL(config.mcpResourceUrl),
+          extra: { workosUserId: principal },
+        };
+      }
+
       if (claimsPokebotsIssuer(token)) {
         const { principal, expiresAt } = await verifyPokebots(token);
         if (!isPokebotsPrincipal(principal) && (await workosProfile(principal, { fresh: true }))?.id !== principal) {
@@ -90,7 +116,7 @@ export function createTokenVerifier({ allowPokebots = false } = {}): OAuthTokenV
         scope?: string;
       };
 
-      if (!claims.sub || isPokebotsPrincipal(claims.sub)) {
+      if (!claims.sub || isPokebotsPrincipal(claims.sub) || isScopedPrincipal(claims.sub)) {
         throw new OAuthError('invalid_token', 'Token has no valid WorkOS subject');
       }
 
