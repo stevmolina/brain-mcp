@@ -266,6 +266,9 @@ export async function directWriteAllowed(
   githubLogin: string | null,
 ): Promise<boolean> {
   if (!resolveProfile(brain.profile).directWrites) return false;
+  // A scoped token is a bot acting for its owner on a few brains. Its writes
+  // are proposals a person reviews, never commits to main.
+  if (isScopedPrincipal(workosUserId)) return false;
   if (!githubLogin || !isBrainOwner(brain, workosUserId, githubLogin)) return false;
   return githubSaysCanPush(brain, githubLogin);
 }

@@ -21,6 +21,7 @@ const { listBrains } = await import('../src/tools/brains.js');
 
 const USER = 'user_tokentestowner';
 const STRANGER = 'user_tokenteststranger';
+const GONE = 'user_tokentestdeleted';
 const CLIENT_A = 'token-test/client-a';
 const CLIENT_B = 'token-test/client-b';
 const PERSONAL = 'token-test/personal';
@@ -43,9 +44,14 @@ const realFetch = globalThis.fetch;
 
 beforeAll(async () => {
   // No WorkOS here: only registered owners reach brains, nobody has a GitHub login.
-  vi.stubGlobal('fetch', async (url: string | URL | Request, init?: RequestInit) =>
-    String(url).includes('api.workos.com') ? new Response(null, { status: 404 }) : realFetch(url, init),
-  );
+  // WorkOS knows the users (and not deleted ones) but links no GitHub login.
+  vi.stubGlobal('fetch', async (url: string | URL | Request, init?: RequestInit) => {
+    const target = String(url);
+    if (!target.includes('api.workos.com')) return realFetch(url, init);
+    const id = target.split('/users/')[1]?.split('/')[0] ?? '';
+    if (target.endsWith('/identities') || id === GONE) return new Response(null, { status: 404 });
+    return Response.json({ id, email: `${id}@token.invalid`, email_verified: true });
+  });
   await migrate();
   await sessionsDb().query(await readFile(new URL('./fixtures/sessions-table.sql', import.meta.url), 'utf8'));
   await migrateSessions();
@@ -91,6 +97,18 @@ describe('making and verifying tokens', () => {
     await expect(createTokenVerifier().verifyAccessToken(token)).rejects.toSatisfy(invalid);
     expect(await revokeAccessToken(id)).toBe(true);
     await expect(verifier().verifyAccessToken(token)).rejects.toSatisfy(invalid);
+  });
+
+  it('never turns an empty brain list into a token for every brain', async () => {
+    for (const brains of [[], [''], [' ', '']]) {
+      await expect(createAccessToken({ workosUserId: USER, name: 'token-test empty', brains })).rejects.toThrow(/empty/);
+    }
+    expect((await listAccessTokens(USER)).some((t) => t.name === 'token-test empty')).toBe(false);
+  });
+
+  it('dies with its WorkOS user', async () => {
+    const { token } = await createAccessToken({ workosUserId: GONE, name: 'token-test gone' });
+    await expect(verifier().verifyAccessToken(token)).rejects.toSatisfy((e: unknown) => (e as { code?: string }).code === 'invalid_token');
   });
 
   it('refuses a user id that is not a WorkOS id', async () => {

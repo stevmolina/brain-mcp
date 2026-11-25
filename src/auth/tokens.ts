@@ -47,7 +47,10 @@ export async function createAccessToken(input: {
   brains?: string[] | null;
 }): Promise<{ id: string; token: string }> {
   if (!/^user_[A-Za-z0-9]+$/.test(input.workosUserId)) throw new Error('workos user id must look like user_...');
-  const brains = input.brains?.length ? [...new Set(input.brains)] : null;
+  // Only a missing list means "every brain". An empty one is a mistake (an
+  // unset variable, a stray comma) and must never widen to full access.
+  if (input.brains && !input.brains.some((b) => b.trim())) throw new Error('brains is empty: name at least one, or leave it out for every brain');
+  const brains = input.brains ? [...new Set(input.brains.map((b) => b.trim()).filter(Boolean))] : null;
   const id = `tok_${randomBytes(6).toString('hex')}`;
   const token = `${TOKEN_PREFIX}${randomBytes(32).toString('base64url')}`;
   await sessionsDb().query(

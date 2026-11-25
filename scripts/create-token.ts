@@ -19,7 +19,12 @@ function arg(name: string): string | undefined {
 
 const user = arg('workos-user');
 const name = arg('name');
-const brains = arg('brains')?.split(',').map((b) => b.trim()).filter(Boolean);
+const brainsGiven = process.argv.includes('--brains');
+const brains = arg('brains')?.split(',').map((b) => b.trim()).filter((b) => b && !b.startsWith('--'));
+if (brainsGiven && !brains?.length) {
+  console.error('--brains was given but names no brain. Refusing: that would make a token for every brain.');
+  process.exit(1);
+}
 if (!user || !name) {
   console.error('usage: pnpm create-token --workos-user <id> --name <label> [--brains owner/a,owner/b]');
   process.exit(1);
@@ -39,7 +44,7 @@ if (brains?.length) {
   }
 }
 
-const { id, token } = await createAccessToken({ workosUserId: user, name, brains });
+const { id, token } = await createAccessToken({ workosUserId: user, name, brains: brainsGiven ? brains : null });
 console.error(`created ${id} "${name}" for ${user}, ${brains?.length ? `brains ${brains.join(', ')}` : 'every brain the user can reach'}. Shown once:`);
 process.stdout.write(`${token}\n`);
 await closeDb();

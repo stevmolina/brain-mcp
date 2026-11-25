@@ -14,7 +14,7 @@ import { OAuthError, type AuthInfo, type OAuthMetadata, type OAuthTokenVerifier 
 import { workosProfile } from './identity.js';
 import { loadConfig } from '../config.js';
 import { claimsPokebotsIssuer, createPokebotsVerifier, isPokebotsPrincipal, pokebotsScope } from './pokebots.js';
-import { isScopedPrincipal, looksLikeAccessToken, principalForToken } from './tokens.js';
+import { isScopedPrincipal, looksLikeAccessToken, principalForToken, scopeOf } from './tokens.js';
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
 let metadata: OAuthMetadata | undefined;
@@ -56,6 +56,12 @@ export function createTokenVerifier({ allowPokebots = false, allowAccessTokens =
       if (looksLikeAccessToken(token)) {
         const principal = allowAccessTokens ? await principalForToken(token) : null;
         if (!principal) throw new OAuthError('invalid_token', 'Unknown or revoked access token');
+        // A token dies with its WorkOS user. Cached ten minutes, like every
+        // profile read, so a hook does not cost a WorkOS call per request.
+        const user = isScopedPrincipal(principal) ? (await scopeOf(principal))?.workosUserId : principal;
+        if (!user || (await workosProfile(user))?.id !== user) {
+          throw new OAuthError('invalid_token', 'The access token\'s account is unavailable');
+        }
         return {
           token,
           clientId: 'access-token',
