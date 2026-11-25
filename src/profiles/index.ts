@@ -36,6 +36,13 @@ export interface BrainProfile {
   /** Other names for this brain (a client, a product), so `context` can pick
    * it from a question. Data on the brains row, never in code. */
   aliases: string[];
+  /**
+   * Register pages: paths (relative to the repo root) where this brain keeps
+   * rows people look things up in, such as its asks or its known facts. Search
+   * and `context` rank their rows ahead of other rows that cover the same
+   * words. Default none; data on the brains row, never in code.
+   */
+  registerPages: string[];
 }
 
 export const DEFAULT_PROFILE: BrainProfile = {
@@ -54,6 +61,7 @@ export const DEFAULT_PROFILE: BrainProfile = {
   indexPage: 'wiki/index.md',
   meCard: null,
   aliases: [],
+  registerPages: [],
 };
 
 export function resolveProfile(stored: unknown): BrainProfile {
@@ -66,6 +74,9 @@ export function resolveProfile(stored: unknown): BrainProfile {
   profile.meCard = typeof overrides.meCard === 'string' && overrides.meCard ? overrides.meCard : null;
   profile.aliases = Array.isArray(overrides.aliases)
     ? overrides.aliases.filter((alias): alias is string => typeof alias === 'string' && alias.trim().length >= 2).map((a) => a.trim())
+    : [];
+  profile.registerPages = Array.isArray(overrides.registerPages)
+    ? overrides.registerPages.filter((p): p is string => typeof p === 'string' && p.trim().length > 0).map((p) => p.trim())
     : [];
 
   // sources/ is evidence, not claims. The exclusion is structural, not configurable:

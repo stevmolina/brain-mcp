@@ -62,6 +62,8 @@ export interface ContextDeps {
 }
 
 const DEFAULT_BUDGET = 6000;
+/** The most a me card or an index may take when claims matched (at least a tenth of the budget). */
+const PAGE_CAP = 1200;
 /** Repo names too generic to pick a brain from a question by themselves. */
 const GENERIC_NAMES = new Set(['brain', 'brains', 'knowledge', 'notes', 'wiki', 'docs', 'memory']);
 
@@ -102,6 +104,27 @@ export async function buildContext(userId: string, input: ContextInput, deps: Co
   };
   add(brains.length ? `Brains: ${brains.map((b) => b.id).join(', ')} (chosen by ${how}).` : 'Brains: none matched this question.');
 
+  // Claims are searched before the long pages are cut, so a page only gives
+  // up room when claims matched. A match is worth more than the first screen
+  // of a me card or an index; with no match, the pages are all there is.
+  // The whole question first. A brain's own name picked the brain and client
+  // claims rarely repeat it, which can push them under the coverage floor, so
+  // when that finds little, the question without the name fills the rest.
+  const ids = brains.map((b) => b.id);
+  const registers = brains.flatMap((b) => resolveProfile(b.profile).registerPages.map((path) => ({ brainId: b.id, path })));
+  const hits: ClaimHit[] = [];
+  const stripped = withoutNames(question, brains);
+  if (depth >= 3) {
+    hits.push(...(await searchClaims(ids, question, { limit: 20, registers })));
+    if (hits.length < 10 && stripped && stripped !== question) {
+      const seen = new Set(hits.map((h) => h.id));
+      for (const hit of await searchClaims(ids, stripped, { limit: 20 - hits.length, registers })) {
+        if (!seen.has(hit.id)) hits.push(hit);
+      }
+    }
+  }
+  const pageCap = hits.length ? Math.max(PAGE_CAP, Math.floor(budget * 0.1)) : Infinity;
+
   // Level 1: the caller's own me card, from a personal brain they own.
   result.stopped_at = 1;
   const personal = await personalBrain(userId, reachable ?? (await accessibleBrains(userId)));
@@ -109,7 +132,7 @@ export async function buildContext(userId: string, input: ContextInput, deps: Co
     const page = await readPage(personal, resolveProfile(personal.profile).meCard!).catch(() => null);
     if (page) {
       const head = `\n## Me card (${personal.id} ${page.path}, updated ${page.updated_at ?? 'undated'})\n`;
-      const trimmed = trimPage(page.text, Math.min(Math.floor(budget * 0.25), room()) - head.length - 1);
+      const trimmed = trimPage(page.text, Math.min(Math.floor(budget * 0.25), pageCap, room()) - head.length - 1);
       if (trimmed.text) {
         result.me = { ...page, brain: personal.id, text: trimmed.text, truncated: trimmed.truncated };
         add(head + trimmed.text);
@@ -126,7 +149,8 @@ export async function buildContext(userId: string, input: ContextInput, deps: Co
     const page = await readPage(brain, path).catch(() => null);
     if (!page) continue;
     const head = `\n## Index of ${brain.id} (${page.path}, updated ${page.updated_at ?? 'undated'})\n`;
-    const trimmed = trimPage(page.text, Math.min(Math.floor((budget * 0.2) / brains.length), room() - 100) - head.length - 1);
+    const share = Math.floor((budget * 0.2) / brains.length);
+    const trimmed = trimPage(page.text, Math.min(share, pageCap, room() - 100) - head.length - 1);
     if (!trimmed.text) continue;
     result.index.push({ ...page, brain: brain.id, text: trimmed.text, truncated: trimmed.truncated });
     add(head + trimmed.text);
@@ -136,18 +160,6 @@ export async function buildContext(userId: string, input: ContextInput, deps: Co
 
   // Level 3: claims. Leaves a little room for chats when level 4 may run.
   result.stopped_at = 3;
-  // The whole question first. A brain's own name picked the brain and client
-  // claims rarely repeat it, which can push them under the coverage floor, so
-  // when that finds little, the question without the name fills the rest.
-  const ids = brains.map((b) => b.id);
-  const hits: ClaimHit[] = await searchClaims(ids, question, { limit: 20 });
-  const stripped = withoutNames(question, brains);
-  if (hits.length < 10 && stripped && stripped !== question) {
-    const seen = new Set(hits.map((h) => h.id));
-    for (const hit of await searchClaims(ids, stripped, { limit: 20 - hits.length })) {
-      if (!seen.has(hit.id)) hits.push(hit);
-    }
-  }
   const reserve = depth >= 4 && sessionsEnabled() ? Math.floor(budget * 0.15) : 0;
   const byId = new Map(brains.map((b) => [b.id, b]));
   const lines: string[] = [];

@@ -21,12 +21,14 @@ const OTHER = 'user_context_test_other';
 const PERSONAL = 'context-test/me-notes';
 const ORCHARD = 'context-test/orchard-knowledge';
 const HARBOR = 'context-test/harbor-knowledge';
+const LEDGER = 'context-test/ledger-knowledge';
 const FOREIGN = 'context-test/foreign';
 
 const pages: Record<string, string> = {
   [`${PERSONAL}::wiki/me.md`]: '---\ntitle: me\n---\n# Me\nI am a fictional person.\nI like short answers.\n' + 'Filler line.\n'.repeat(400),
   [`${ORCHARD}::wiki/index.md`]: '# Orchard\n- milestones.md: dates and demos\n- billing.md: invoices',
   [`${HARBOR}::wiki/index.md`]: '# Harbor\n- boats.md',
+  [`${LEDGER}::wiki/index.md`]: '# Ledger\n' + 'Index line about the ledger and its pages.\n'.repeat(120),
   [`${FOREIGN}::wiki/me.md`]: '# Someone else entirely',
 };
 const readPage = vi.fn(async (brain: BrainRow, path: string) => {
@@ -76,11 +78,18 @@ beforeAll(async () => {
   await brain(PERSONAL, ME, { meCard: 'wiki/me.md', aliases: ['personal'] });
   await brain(ORCHARD, ME, { aliases: ['Orchard Co', 'Pear Pilot'] });
   await brain(HARBOR, ME, {});
+  await brain(LEDGER, ME, { aliases: ['Ledger Co'], registerPages: ['wiki/asks.md'] });
   await brain(FOREIGN, OTHER, { meCard: 'wiki/me.md', aliases: ['orchard'] });
   await claim(ORCHARD, 'Milestone 2 demo is on 2026-12-03.', 'wiki/milestones.md', '2026-11-01');
   await claim(ORCHARD, 'Invoices go out on the first business day.', 'wiki/billing.md');
   await claim(HARBOR, 'The harbor tug is serviced every March.', 'wiki/boats.md');
   await claim(PERSONAL, '`app.personal.autoupdate`: builds the personal site every 5 minutes.', 'wiki/machines.md');
+  // A register row that is the direct answer, among newer rows that cover the
+  // same words except the number.
+  await claim(LEDGER, 'ID: A-002; Ask: Purchases and account numbers for the 22 accounts missing from Vendor reports; Status: partial', 'wiki/asks.md', '2026-11-10');
+  for (let i = 1; i <= 14; i++) {
+    await claim(LEDGER, `Open items with Vendor for the ${40 + i} other accounts were reviewed in round ${i}, nothing changed.`, `wiki/log-${i}.md`, '2026-11-20');
+  }
   await claim(FOREIGN, 'Foreign secret: the orchard demo is cancelled.', 'wiki/milestones.md');
   await chat('c1', ME, ORCHARD, 'Planning the milestone demo', 'Agreed the milestone 2 demo agenda with the orchard board.', 'long body');
   await chat('c2', ME, ORCHARD, 'Unrelated', null, 'we talked about the milestone demo in passing');
@@ -184,6 +193,32 @@ describe('levels', () => {
       expect(result.text.length, String(budget)).toBeLessThanOrEqual(budget);
       expect(result.used).toBe(result.text.length);
     }
+  });
+});
+
+describe('claims win the budget', () => {
+  const QUESTION = 'What is still open with Vendor on the 22 accounts?';
+
+  it('puts the direct answer first, even with newer rows that cover most of the words', async () => {
+    const result = await buildContext(ME, { question: QUESTION, brain: LEDGER, depth: 3 }, { readPage });
+    expect(result.claims[0]?.text).toMatch(/^ID: A-002/);
+    expect(result.text).toContain('Purchases and account numbers for the 22 accounts');
+  });
+
+  it('cuts the me card and the index to a short head when claims matched', async () => {
+    const result = await buildContext(ME, { question: QUESTION, brain: LEDGER, depth: 3 }, { readPage });
+    expect(result.me?.truncated).toBe(true);
+    expect(result.me!.text.length).toBeLessThanOrEqual(1200);
+    expect(result.index[0]!.text.length).toBeLessThanOrEqual(1200);
+    expect(result.claims.length).toBeGreaterThanOrEqual(8);
+    expect(result.text.length).toBeLessThanOrEqual(6000);
+  });
+
+  it('keeps the whole pages when nothing matches', async () => {
+    const result = await buildContext(ME, { question: 'zzqx plugh', brain: LEDGER, depth: 3, budget: 12000 }, { readPage });
+    expect(result.claims).toEqual([]);
+    expect(result.index[0]!.text.length).toBeGreaterThan(1200);
+    expect(result.me!.text.length).toBeGreaterThan(1200);
   });
 });
 
