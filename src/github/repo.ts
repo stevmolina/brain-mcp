@@ -97,3 +97,56 @@ function toNodeStream(body: unknown): Readable {
   }
   return Readable.from(body as never);
 }
+
+export interface PageCommit {
+  sha: string;
+  at: string;
+}
+
+/**
+ * The last commit that touched each path, as of `commit`. One GraphQL request
+ * per 40 paths instead of one REST request per path. Best effort: a page this
+ * cannot date gets no entry, and the caller indexes it undated.
+ */
+export async function lastCommitPerPath(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  commit: string,
+  paths: string[],
+): Promise<Map<string, PageCommit>> {
+  const out = new Map<string, PageCommit>();
+  for (let start = 0; start < paths.length; start += 40) {
+    const batch = paths.slice(start, start + 40);
+    const fields = batch
+      .map((_, i) => `p${i}: history(first: 1, path: $path${i}) { nodes { oid committedDate } }`)
+      .join('\n');
+    const variables: Record<string, string> = { owner, repo, commit };
+    batch.forEach((path, i) => {
+      variables[`path${i}`] = path;
+    });
+    const query = `query(${['$owner: String!', '$repo: String!', '$commit: String!', ...batch.map((_, i) => `$path${i}: String!`)].join(', ')}) {
+      repository(owner: $owner, name: $repo) {
+        object(expression: $commit) { ... on Commit { ${fields} } }
+      }
+    }`;
+    type Answer = { repository: { object: Record<string, { nodes: Array<{ oid: string; committedDate: string }> }> | null } };
+    // One failed batch leaves its 40 pages undated, not the whole brain. One
+    // retry covers a passing 502 or secondary rate limit.
+    let data: Answer | undefined;
+    for (let attempt = 0; attempt < 2 && !data; attempt++) {
+      try {
+        data = await octokit.graphql<Answer>(query, variables);
+      } catch (error) {
+        if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 1_000));
+        else console.error(JSON.stringify({ level: 'warn', at: 'repo.lastCommitPerPath', repo: `${owner}/${repo}`, first: batch[0], message: String(error) }));
+      }
+    }
+    const object = data?.repository.object ?? {};
+    batch.forEach((path, i) => {
+      const node = object[`p${i}`]?.nodes[0];
+      if (node) out.set(path, { sha: node.oid, at: node.committedDate });
+    });
+  }
+  return out;
+}

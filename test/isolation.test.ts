@@ -167,7 +167,7 @@ describe('list_brains', () => {
 describe('rebuildability', () => {
   it('drops a brain and every derived row with it', async () => {
     await db().query('delete from brains where id = $1', [A]);
-    for (const table of ['claims', 'sources', 'claim_sources', 'supersessions', 'audit_findings']) {
+    for (const table of ['claims', 'sources', 'claim_sources', 'supersessions', 'audit_findings', 'pages']) {
       const { rows } = await db().query(`select count(*)::int as n from ${table} where brain_id = $1`, [A]);
       expect((rows[0] as { n: number }).n, `${table} still holds rows for a deleted brain`).toBe(0);
     }

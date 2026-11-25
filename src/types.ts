@@ -50,4 +50,9 @@ export interface ClaimView {
   commit: string;
   superseded_by: string | null;
   url: string;
+  /** Search results only: which tier found it, and how many query words it covers. */
+  match?: 'all_words' | 'any_words';
+  coverage?: string;
+  /** Search results only: the day the claim's page last changed in git. */
+  page_updated_at?: string | null;
 }

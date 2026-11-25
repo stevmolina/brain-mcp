@@ -1,13 +1,15 @@
 import { z } from 'zod';
 import { isoDay } from '../dates.js';
 import type { BrainRow, ClaimRow, ClaimView } from '../types.js';
+import type { ClaimHit } from '../search/claims.js';
 
 /**
  * Every returned claim carries where it came from, when it was verified, and its
  * authority. This is the only place a claim row becomes a tool result, so there
  * is no path by which a bare sentence reaches a caller.
  */
-export function toClaimView(brain: BrainRow, row: ClaimRow): ClaimView {
+export function toClaimView(brain: Pick<BrainRow, 'id' | 'repo_owner' | 'repo_name'>, row: ClaimRow): ClaimView {
+  const hit = row as ClaimRow & Partial<ClaimHit>;
   return {
     id: row.id,
     brain: brain.id,
@@ -24,14 +26,23 @@ export function toClaimView(brain: BrainRow, row: ClaimRow): ClaimView {
     url:
       `https://github.com/${brain.repo_owner}/${brain.repo_name}/blob/${row.commit_sha}/` +
       `${row.page_path.split('/').map(encodeURIComponent).join('/')}#L${row.line}`,
+    ...(hit.match
+      ? {
+          match: hit.match,
+          coverage: `${hit.covered}/${hit.terms}`,
+          page_updated_at: isoDay(hit.page_updated_at ?? null),
+        }
+      : {}),
   };
 }
 
 export function renderClaimLine(view: ClaimView): string {
   const authority = view.authority ? `authority: ${view.authority}` : 'durable';
   const verified = view.verified_at ? `, verified ${view.verified_at}` : '';
+  const page = !view.verified_at && view.page_updated_at ? `, page updated ${view.page_updated_at}` : '';
   const superseded = view.superseded_by ? `, SUPERSEDED by ${view.superseded_by.slice(0, 12)}` : '';
-  return `- ${view.text}\n  ${view.page}:${view.line} (${authority}${verified}${superseded}) [${view.id.slice(0, 12)}]`;
+  const match = view.match === 'any_words' ? ` {some words: ${view.coverage}}` : '';
+  return `- ${view.text}\n  ${view.page}:${view.line} (${authority}${verified}${page}${superseded}) [${view.id.slice(0, 12)}]${match}`;
 }
 
 export function textResult(text: string, structured?: Record<string, unknown>) {
