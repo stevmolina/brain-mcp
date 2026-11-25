@@ -51,6 +51,7 @@ beforeAll(async () => {
       { text: 'Old note about the date of the picnic.', page: 'wiki/old.md' },
       { text: 'New note about the date of the picnic.', page: 'wiki/new.md' },
       { text: 'Pears are picked by hand.', page: 'wiki/harvest/pears.md' },
+      { text: '`com.orchard.nightly-sync` copies the ledger every night.', page: 'wiki/jobs.md' },
       { text: 'Verified picnic date is in June.', page: 'wiki/old.md', verified: '2026-11-01' },
     ],
     { 'wiki/old.md': '2026-01-01T00:00:00Z', 'wiki/new.md': '2026-11-20T00:00:00Z' },
@@ -73,6 +74,12 @@ describe('search tiers', () => {
   it('finds a claim by its page path', async () => {
     const hits = await searchClaims([A], 'harvest pears', { limit: 5 });
     expect(hits.map((h) => h.text)).toEqual(['Pears are picked by hand.']);
+  });
+
+  it('finds the parts of a dotted name', async () => {
+    const hits = await searchClaims([A], 'orchard nightly ledger', { limit: 5 });
+    expect(hits[0]!.text).toMatch(/nightly-sync/);
+    expect(hits[0]!.match).toBe('all_words');
   });
 
   it('falls back to some-words matching when no claim has every word', async () => {

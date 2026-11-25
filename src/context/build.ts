@@ -136,10 +136,18 @@ export async function buildContext(userId: string, input: ContextInput, deps: Co
 
   // Level 3: claims. Leaves a little room for chats when level 4 may run.
   result.stopped_at = 3;
-  // A brain's own name picks the brain; its claims rarely repeat it, so it
-  // would only lower their coverage.
-  const searchText = withoutNames(question, brains) || question;
-  const hits: ClaimHit[] = await searchClaims(brains.map((b) => b.id), searchText, { limit: 20 });
+  // The whole question first. A brain's own name picked the brain and client
+  // claims rarely repeat it, which can push them under the coverage floor, so
+  // when that finds little, the question without the name fills the rest.
+  const ids = brains.map((b) => b.id);
+  const hits: ClaimHit[] = await searchClaims(ids, question, { limit: 20 });
+  const stripped = withoutNames(question, brains);
+  if (hits.length < 10 && stripped && stripped !== question) {
+    const seen = new Set(hits.map((h) => h.id));
+    for (const hit of await searchClaims(ids, stripped, { limit: 20 - hits.length })) {
+      if (!seen.has(hit.id)) hits.push(hit);
+    }
+  }
   const reserve = depth >= 4 && sessionsEnabled() ? Math.floor(budget * 0.15) : 0;
   const byId = new Map(brains.map((b) => [b.id, b]));
   const lines: string[] = [];
@@ -163,7 +171,7 @@ export async function buildContext(userId: string, input: ContextInput, deps: Co
   // Level 4: the caller's own chats in those brains. Never anyone else's.
   result.stopped_at = 4;
   try {
-    const chats = await sessionsForQuestion(userId, brains.map((b) => b.id), searchText, 5);
+    const chats = await sessionsForQuestion(userId, ids, stripped || question, 5);
     const chatsHead = '\n## Your chats (private to you)';
     used += chatsHead.length + 1;
     const chatLines: string[] = [];
