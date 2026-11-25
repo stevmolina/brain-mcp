@@ -13,6 +13,8 @@ import { brainOverview, readPage } from './brain.js';
 /** Brain ids contain a slash, so they are query/body fields rather than URL segments. */
 export const endpoints = [
   ['get', '/brains', 'list_brains'],
+  ['get', '/context', 'context'],
+  ['post', '/context', 'context'],
   ['get', '/search', 'search'],
   ['get', '/claims/get', 'get_claim'],
   ['get', '/claims/explain', 'explain_claim'],

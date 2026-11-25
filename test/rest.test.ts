@@ -147,7 +147,7 @@ describe('REST authentication and errors', () => {
     const response = await realFetch(`${base}/api/v1/openapi.json`);
     const doc = await response.json();
     expect(response.status).toBe(200);
-    expect(Object.values(doc.paths).flatMap((methods: any) => Object.values(methods)).length).toBe(19);
+    expect(Object.values(doc.paths).flatMap((methods: any) => Object.values(methods)).length).toBe(21);
     expect(doc.paths['/search'].get.parameters.find((p: any) => p.name === 'include_sessions').schema.type).toBe('boolean');
     expect(doc.paths['/search'].get.parameters.find((p: any) => p.name === 'limit').required).toBe(false);
   });
