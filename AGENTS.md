@@ -124,7 +124,16 @@ carries `owner` (the pusher's WorkOS user id) and `brain` (a brain id derived
 from the folder the chat ran in). brain-mcp reads that database through
 `SESSIONS_DATABASE_URL`, as a role that can SELECT `sessions` and owns the
 `brain_mcp` schema there, which holds share grants (`db/sessions-migrations`,
-applied by `pnpm migrate`).
+applied by `pnpm migrate`). That role also needs `CREATE` on the database,
+because the migrate runs `create schema if not exists brain_mcp`.
+
+Since 2026-11-24 that database is Postgres 17 on the Contabo VPS
+(`pg-eu.stevmolina.com:5432`, database `sessions`, TLS only, Let's Encrypt
+cert, so the URL uses `sslmode=verify-full`). The runbook is
+`/srv/stacks/sessions-db/README.md` on that box (repo `stevmolina/srv-stacks`,
+branch `contabo`). Before that it was Neon project `sessions`, which ran out of
+free compute; its URL stays in Doppler as `NEON_SESSIONS_DATABASE_URL`. Share
+grants made on Neon were not copied: Neon refused every connection at the time.
 
 It is a separate database on purpose: the brain database is derived from git
 (rule 2), chats and shares are not.
@@ -168,6 +177,16 @@ Deployed to the OVH VPS under Dokploy (lane 1), behind Traefik at
 `brain.mcpbox.dev`. The container binds `0.0.0.0` because Dokploy publishes no host
 port and Traefik reaches it over the docker network; nothing on the box binds a
 public port but Traefik. Memory-cap the container.
+
+The container reads its env from the Dokploy app, not from Doppler. After a
+Doppler change (for example `SESSIONS_DATABASE_URL`), read the app with
+`application.one`, change that one line in its `env`, and send the whole `env`
+back with `application.saveEnvironment` (plus its current `buildArgs`,
+`buildSecrets` and `createEnvFile`): the call replaces the env, so a partial
+one drops every other variable. Then redeploy with `application.deploy` on the
+OVH Dokploy API. `SESSIONS_DATABASE_URL` is set in
+`prd` only: in `dev` the tests fall back to `DATABASE_URL` and write fixture
+rows, so never point `dev` at the real sessions database.
 
 ## Open, deliberately
 
