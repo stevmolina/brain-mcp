@@ -163,7 +163,7 @@ describe('levels', () => {
     expect(result.text).not.toContain('Tug chat');
   });
 
-  it('finds a fact whose own words include the brain's alias', async () => {
+  it('finds a fact whose own words include the brain alias', async () => {
     // "personal" is the brain's alias and also the claim's own word: dropping
     // it before searching would leave only "machine" (from the page path).
     const result = await buildContext(ME, { question: 'Which machine runs the personal update job?', brain: PERSONAL, depth: 3 }, { readPage });
