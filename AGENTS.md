@@ -179,9 +179,12 @@ port and Traefik reaches it over the docker network; nothing on the box binds a
 public port but Traefik. Memory-cap the container.
 
 The container reads its env from the Dokploy app, not from Doppler. After a
-Doppler change (for example `SESSIONS_DATABASE_URL`), copy the value into the
-app env with `application.saveEnvironment` and redeploy with
-`application.deploy` on the OVH Dokploy API. `SESSIONS_DATABASE_URL` is set in
+Doppler change (for example `SESSIONS_DATABASE_URL`), read the app with
+`application.one`, change that one line in its `env`, and send the whole `env`
+back with `application.saveEnvironment` (plus its current `buildArgs`,
+`buildSecrets` and `createEnvFile`): the call replaces the env, so a partial
+one drops every other variable. Then redeploy with `application.deploy` on the
+OVH Dokploy API. `SESSIONS_DATABASE_URL` is set in
 `prd` only: in `dev` the tests fall back to `DATABASE_URL` and write fixture
 rows, so never point `dev` at the real sessions database.
 
