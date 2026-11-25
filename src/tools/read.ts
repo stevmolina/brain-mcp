@@ -12,6 +12,7 @@ import { workosUserId } from '../auth/workos.js';
 import { isoDay } from '../dates.js';
 import { brainArg, handling, renderClaimLine, textResult, toClaimView } from './shared.js';
 import type { ClaimRow, SourceRow } from '../types.js';
+import { resolveProfile } from '../profiles/index.js';
 import { searchClaims } from '../search/claims.js';
 import type { ToolContext } from './index.js';
 import { sessionsEnabled } from '../sessions/db.js';
@@ -48,6 +49,7 @@ export function registerReadTools(server: ToolRegistrar, ctx: ToolContext): void
       const rows = await searchClaims([brain.id], args.query, {
         limit: args.limit,
         includeSuperseded: args.include_superseded,
+        registers: resolveProfile(brain.profile).registerPages.map((path) => ({ brainId: brain.id, path })),
       });
 
       const views = rows.map((row) => toClaimView(brain, row));

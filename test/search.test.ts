@@ -10,6 +10,7 @@ import { renderClaimLine, toClaimView } from '../src/tools/shared.js';
 
 const A = 'search-test/orchard';
 const B = 'search-test/harbor';
+const C = 'search-test/ranking';
 
 interface Seed {
   text: string;
@@ -40,7 +41,7 @@ async function seed(brain: string, claims: Seed[], pageDates: Record<string, str
 
 beforeAll(async () => {
   await migrate();
-  await db().query('delete from brains where id in ($1, $2)', [A, B]);
+  await db().query('delete from brains where id in ($1, $2, $3)', [A, B, C]);
   await seed(
     A,
     [
@@ -56,11 +57,17 @@ beforeAll(async () => {
     ],
     { 'wiki/old.md': '2026-01-01T00:00:00Z', 'wiki/new.md': '2026-11-20T00:00:00Z' },
   );
+  await seed(C, [
+    { text: 'Order notes for the 22 depots missing from the carrier files; status partial.', page: 'wiki/log-a.md', verified: '2026-11-01' },
+    { text: 'Open carrier files were reviewed for depot paperwork again.', page: 'wiki/log-b.md', verified: '2026-11-20' },
+    { text: 'Open carrier files were reviewed for depot paperwork in round two.', page: 'wiki/asks.md', verified: '2026-11-02' },
+    { text: 'Open carrier files were reviewed for depot paperwork in round three.', page: 'wiki/log-c.md', verified: '2026-11-21' },
+  ]);
   await seed(B, [{ text: 'Milestone 2 demo date for the harbor is secret: 2026-12-24.', page: 'wiki/milestones.md' }]);
 });
 
 afterAll(async () => {
-  await db().query('delete from brains where id in ($1, $2)', [A, B]);
+  await db().query('delete from brains where id in ($1, $2, $3)', [A, B, C]);
   await closeDb();
 });
 
@@ -135,6 +142,38 @@ describe('search tiers', () => {
     expect(view.match).toBe('any_words');
     expect(view.coverage).toMatch(/^\d\/5$/);
     expect(renderClaimLine(view)).toContain('{some words:');
+  });
+});
+
+describe('ranking', () => {
+  it('drops filler words, so the other words can all match', async () => {
+    const hits = await searchClaims([C], 'What is still open with the carrier files?', { limit: 10 });
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits[0]!.match).toBe('all_words');
+  });
+
+  it('keeps a question made only of filler', async () => {
+    await expect(searchClaims([C], 'still', { limit: 5 })).resolves.toBeInstanceOf(Array);
+  });
+
+  it('counts a number: the row with it beats rows that cover the same other words', async () => {
+    const hits = await searchClaims([C], 'open 22 carrier depots', { limit: 10 });
+    expect(hits[0]!.text).toMatch(/22 depots/);
+  });
+
+  it('puts register rows ahead of newer rows with the same coverage', async () => {
+    const plain = await searchClaims([C], 'open carrier files reviewed paperwork round', { limit: 10 });
+    expect(plain[0]!.page_path).not.toBe('wiki/asks.md');
+    const hits = await searchClaims([C], 'open carrier files reviewed paperwork round', {
+      limit: 10,
+      registers: [{ brainId: C, path: 'wiki/asks.md' }],
+    });
+    expect(hits[0]!.page_path).toBe('wiki/asks.md');
+  });
+
+  it('ignores a register for a brain it was not asked to search', async () => {
+    const hits = await searchClaims([A], 'milestone demo', { limit: 5, registers: [{ brainId: B, path: 'wiki/milestones.md' }] });
+    expect(hits.every((h) => h.brain_id === A)).toBe(true);
   });
 });
 

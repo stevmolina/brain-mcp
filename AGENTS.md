@@ -76,9 +76,13 @@ across reflows and changes when the claim changes.
 `src/search/claims.ts`, in two tiers. First every query word (in the claim, its
 heading or its page path, weighted A, B, C). When that returns fewer than the
 limit, any word: stopwords dropped, prefixes, and a claim must cover 1 of 1-2
-words, 2 of 3-5, 3 of 6+. More words covered ranks first, then `verified_at`,
-then the page's last commit date (`pages`, filled by the indexer). Each hit says
-which tier found it (`match`).
+words, 2 of 3-5, 3 of 6+. Filler a question carries and Postgres keeps
+("still", "currently", `FILLER` in the file) is dropped first. Ranking in the
+any-word tier: the share of query words covered, each weighted by how rare it
+is in these brains (so "22" or a client name outweighs "open"), in tenths;
+then rows from the brain's register pages (profile `registerPages`); then more
+words; then `verified_at`, then the page's last commit date (`pages`, filled by
+the indexer). Each hit says which tier found it (`match`).
 
 ## Context
 
@@ -94,10 +98,17 @@ brain named in the question or `cwd` by a profile alias or its repo name, else
 the brains whose claims match best. At most two. Never a brain outside
 `accessibleBrains`.
 
+When claims matched, the me card and the index are cut to a short head (1,200
+characters, or a tenth of the budget when that is more) so claims get most of
+the budget; with no match they keep their full share.
+
 Profile keys it reads, all on the `brains` row: `meCard` (path of the owner's
 me card; only on a personal brain, used only for its owner), `indexPage`
 (default `wiki/index.md`), `aliases` (string array: client and product names).
-Aliases are tenant data, so they live in the database, never in this repo.
+`registerPages` (string array of paths: a brain's asks, facts and other lookup
+tables) ranks their rows ahead of rows with the same coverage, in `search` and
+`context`. Default none. Aliases and register pages are tenant data, so they
+live in the database, never in this repo.
 
 Chats: `card` and `card_updated_at` on `sessions` come from the sessions CLI.
 When both columns exist, `search_sessions` and `context` search title + card
