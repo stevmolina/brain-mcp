@@ -130,10 +130,19 @@ export async function lastCommitPerPath(
         object(expression: $commit) { ... on Commit { ${fields} } }
       }
     }`;
-    const data = await octokit.graphql<{
-      repository: { object: Record<string, { nodes: Array<{ oid: string; committedDate: string }> }> | null };
-    }>(query, variables);
-    const object = data.repository.object ?? {};
+    type Answer = { repository: { object: Record<string, { nodes: Array<{ oid: string; committedDate: string }> }> | null } };
+    // One failed batch leaves its 40 pages undated, not the whole brain. One
+    // retry covers a passing 502 or secondary rate limit.
+    let data: Answer | undefined;
+    for (let attempt = 0; attempt < 2 && !data; attempt++) {
+      try {
+        data = await octokit.graphql<Answer>(query, variables);
+      } catch (error) {
+        if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 1_000));
+        else console.error(JSON.stringify({ level: 'warn', at: 'repo.lastCommitPerPath', repo: `${owner}/${repo}`, first: batch[0], message: String(error) }));
+      }
+    }
+    const object = data?.repository.object ?? {};
     batch.forEach((path, i) => {
       const node = object[`p${i}`]?.nodes[0];
       if (node) out.set(path, { sha: node.oid, at: node.committedDate });
