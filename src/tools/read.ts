@@ -12,6 +12,7 @@ import { workosUserId } from '../auth/workos.js';
 import { isoDay } from '../dates.js';
 import { brainArg, handling, renderClaimLine, textResult, toClaimView } from './shared.js';
 import type { ClaimRow, SourceRow } from '../types.js';
+import { searchClaims } from '../search/claims.js';
 import type { ToolContext } from './index.js';
 import { sessionsEnabled } from '../sessions/db.js';
 import { searchSessions, type SessionSummary } from '../sessions/store.js';
@@ -25,6 +26,7 @@ export function registerReadTools(server: ToolRegistrar, ctx: ToolContext): void
       description:
         'Search a project\'s memory before you answer anything about a project, client, person, past decision or "what did we decide", even when the user did not ask you to look. ' +
         'Returns claims with page, line, and authority and verification date when set: cite the page, and the date when there is one. ' +
+        'Claims with every query word come first; when there are too few, claims with some of the words follow, marked match "any_words". Plain words work best. ' +
         'Pass `brain` (an id from list_brains) when there is more than one.',
       inputSchema: z.object({
         query: z.string().min(1).describe('Words to search for.'),
@@ -43,19 +45,16 @@ export function registerReadTools(server: ToolRegistrar, ctx: ToolContext): void
     },
     handling(async (args, mcp) => {
       const brain = await requireBrain(workosUserId(mcp.http?.authInfo), args.brain);
-      const { rows } = await db().query<ClaimRow & { rank: number }>(
-        `select c.*, ts_rank(c.fts, websearch_to_tsquery('english', $2)) as rank
-           from claims c
-          where c.brain_id = $1
-            and (c.fts @@ websearch_to_tsquery('english', $2) or c.text ilike $3)
-            and ($4 or c.superseded_by is null)
-          order by rank desc, c.page_path, c.line
-          limit $5`,
-        [brain.id, args.query, `%${args.query}%`, args.include_superseded, args.limit],
-      );
+      const rows = await searchClaims([brain.id], args.query, {
+        limit: args.limit,
+        includeSuperseded: args.include_superseded,
+      });
 
       const views = rows.map((row) => toClaimView(brain, row));
-      const header = `${views.length} claim${views.length === 1 ? '' : 's'} in ${brain.id} for "${args.query}"`;
+      const loose = views.filter((v) => v.match === 'any_words').length;
+      const header =
+        `${views.length} claim${views.length === 1 ? '' : 's'} in ${brain.id} for "${args.query}"` +
+        (loose ? ` (${views.length - loose} with every word, ${loose} with some words, marked {some words})` : '');
       const body = views.length ? views.map(renderClaimLine).join('\n') : 'No matching claims.';
 
       // The caller's own chats only, never a teammate's: the brain is shared,

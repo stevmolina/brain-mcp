@@ -71,6 +71,15 @@ items, so they refuse a table-row claim.
 Claim id is `sha256(brain_id + page path + normalized text)`, so it is stable
 across reflows and changes when the claim changes.
 
+## Search
+
+`src/search/claims.ts`, in two tiers. First every query word (in the claim, its
+heading or its page path, weighted A, B, C). When that returns fewer than the
+limit, any word: stopwords dropped, prefixes, and a claim must cover 1 of 1-2
+words, 2 of 3-5, 3 of 6+. More words covered ranks first, then `verified_at`,
+then the page's last commit date (`pages`, filled by the indexer). Each hit says
+which tier found it (`match`).
+
 ## Auth
 
 WorkOS AuthKit is the authorization server; this is a **resource server only**.

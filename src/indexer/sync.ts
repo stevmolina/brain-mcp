@@ -8,7 +8,7 @@
 import { createHash } from 'node:crypto';
 import picomatch from 'picomatch';
 import { installationOctokit } from '../github/app.js';
-import { fetchRepoFiles, type RepoFile } from '../github/repo.js';
+import { fetchRepoFiles, lastCommitPerPath, type PageCommit, type RepoFile } from '../github/repo.js';
 import { resolveProfile } from '../profiles/index.js';
 import { withTransaction } from '../db/client.js';
 import { parsePage, type ParsedClaim } from './parse.js';
@@ -77,6 +77,15 @@ export async function indexBrainAtCommit(brain: BrainRow, commit: string): Promi
   const manifestFile = files.get(`${sourcesPrefix}README.md`);
   const manifest = manifestFile?.text ? parseSourceManifest(manifestFile.text) : new Map();
 
+  // When each page last changed, for recency ranking and dated page reads.
+  // Outside the transaction (network), and never fatal: undated beats unindexed.
+  let pageDates = new Map<string, PageCommit>();
+  try {
+    pageDates = await lastCommitPerPath(octokit, brain.repo_owner, brain.repo_name, commit, pages.map((p) => p.path));
+  } catch (error) {
+    console.error(JSON.stringify({ level: 'warn', at: 'index.pageDates', brain: brain.id, message: String(error) }));
+  }
+
   const claims: ParsedClaim[] = [];
   for (const page of pages) {
     claims.push(
@@ -128,6 +137,20 @@ export async function indexBrainAtCommit(brain: BrainRow, commit: string): Promi
     await client.query('delete from supersessions where brain_id = $1', [brain.id]);
     await client.query('delete from claims where brain_id = $1', [brain.id]);
     await client.query('delete from sources where brain_id = $1', [brain.id]);
+    await client.query('delete from pages where brain_id = $1', [brain.id]);
+
+    if (pages.length) {
+      await client.query(
+        `insert into pages (brain_id, path, last_commit_sha, last_commit_at)
+         select $1, * from unnest($2::text[], $3::text[], $4::timestamptz[])`,
+        [
+          brain.id,
+          pages.map((page) => page.path),
+          pages.map((page) => pageDates.get(page.path)?.sha ?? null),
+          pages.map((page) => pageDates.get(page.path)?.at ?? null),
+        ],
+      );
+    }
 
     // Inserted column-wise through unnest rather than row by row: a brain of a
     // few thousand claims is one round trip per table instead of a few thousand,
