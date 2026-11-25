@@ -88,6 +88,18 @@ Use `requireBearerAuth`, `mcpAuthMetadataRouter` and `OAuthTokenVerifier` from
 `ProxyOAuthServerProvider`) are frozen in `@modelcontextprotocol/server-legacy`;
 do not use them.
 
+Callers that cannot do OAuth (hooks on a laptop, bots on a server) send a
+personal access token instead: `bmt_` plus 32 random bytes, made with
+`pnpm create-token`, stored only as a SHA-256 in the sessions database
+(`brain_mcp.access_tokens`, not the brain database: a token cannot be rebuilt
+from git). An unscoped token acts as its WorkOS user. A token made with
+`--brains` acts as `pat:<token id>`, and `src/auth/access.ts` resolves that on
+every brain lookup to its user plus an allow list: it reaches only those brains,
+and only while the user can; it owns no chats and has no email. Revoking deletes
+the row and takes effect on the next request. `test/tokens.test.ts` holds the
+scoping; keep it passing beside `test/isolation.test.ts`. Pokebots bots keep their
+own signed JWTs (`src/auth/pokebots.ts`).
+
 WorkOS answers *who this is*. The GitHub API answers *which brains they may read*.
 There is no second permission list in this database, and there must not be one.
 Repo access is cached for a minute so removal takes effect without a deploy.
@@ -177,7 +189,13 @@ doppler run -- pnpm reindex [<brain id>]
 doppler run -- pnpm reconcile [<brain id>]
 doppler run -- pnpm offboard-brain <brain id> [--confirm]
 doppler run -- pnpm upload-files <brain id> <local dir>
+doppler run -- pnpm create-token --workos-user <id> --name <label> [--brains a/b,c/d]
+doppler run -- pnpm list-tokens [--workos-user <id>]
+doppler run -- pnpm revoke-token <tok_...>
 ```
+
+`create-token` prints the token alone on stdout, once. Pipe it into a secret
+store; never paste it into a chat, a log or a commit.
 
 `upload-files` copies a local folder into a brain's file space and skips any path
 that already exists, then prints how many it added, skipped and refused.

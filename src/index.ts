@@ -104,7 +104,7 @@ export async function createApp(): Promise<express.Express> {
     }),
   );
 
-  const tokenVerifier = createTokenVerifier({ allowPokebots: true });
+  const tokenVerifier = createTokenVerifier({ allowPokebots: true, allowAccessTokens: true });
   const bearer = requireBearerAuth({
     verifier: tokenVerifier,
     resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(resourceUrl),

@@ -5,6 +5,7 @@
  */
 import { loadConfig } from '../config.js';
 import { isPokebotsPrincipal } from './pokebots.js';
+import { isScopedPrincipal } from './tokens.js';
 
 export interface WorkosProfile {
   id: string;
@@ -16,7 +17,8 @@ export interface WorkosProfile {
 const cache = new Map<string, { value: WorkosProfile | null; expiresAt: number }>();
 
 export async function workosProfile(userId: string, options?: { fresh: true }): Promise<WorkosProfile | null> {
-  if (isPokebotsPrincipal(userId)) return null;
+  // A scoped token has no email: it cannot share chats or open shared ones.
+  if (isPokebotsPrincipal(userId) || isScopedPrincipal(userId)) return null;
   const hit = cache.get(userId);
   if (!options?.fresh && hit && hit.expiresAt > Date.now()) return hit.value;
 

@@ -16,6 +16,9 @@
     "reindex": "tsx scripts/reindex.ts",
     "reconcile": "tsx src/reconcile/run.ts",
     "upload-files": "tsx scripts/upload-files.ts",
+    "create-token": "tsx scripts/create-token.ts",
+    "revoke-token": "tsx scripts/revoke-token.ts",
+    "list-tokens": "tsx scripts/list-tokens.ts",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
