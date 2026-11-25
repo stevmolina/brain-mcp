@@ -101,7 +101,7 @@ export async function searchClaims(
   // claim's coverage is how many of them it matches. Each word also has a
   // weight: how rare it is among the claims of these brains, so a number or a
   // name ("22", a client) counts for more than a word that is in every row
-  // ("open"). Rows are ranked by the weighted share they cover, in tenths.
+  // ("open"). Rows are ranked by the weighted share they cover, in quarters.
   const { rows: loose } = await db().query<ClaimRow & { page_updated_at: Date | null; covered: number; terms: number }>(
     `with lex as (
        select distinct lexeme from unnest(to_tsvector('english', $2))
@@ -137,7 +137,7 @@ export async function searchClaims(
         and ($4 or c.superseded_by is null)
         and not (c.id = any($5))
         and cov.n >= case when q.terms <= 2 then 1 when q.terms <= 5 then 2 else 3 end
-      order by round((cov.weight / q.weight_total)::numeric, 1) desc, ${REGISTER}, cov.n desc,
+      order by round((cov.weight / q.weight_total)::numeric * 4) desc, ${REGISTER}, cov.n desc,
                ts_rank_cd(c.fts, q.anyq) desc, ${RECENCY}
       limit $3`,
     [
