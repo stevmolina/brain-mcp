@@ -79,7 +79,7 @@ limit, any word: stopwords dropped, prefixes, and a claim must cover 1 of 1-2
 words, 2 of 3-5, 3 of 6+. Filler a question carries and Postgres keeps
 ("still", "currently", `FILLER` in the file) is dropped first. Ranking in the
 any-word tier: the share of query words covered, each weighted by how rare it
-is in these brains (so "22" or a client name outweighs "open"), in tenths;
+is in these brains (so "22" or a client name outweighs "open"), in quarters;
 then rows from the brain's register pages (profile `registerPages`); then more
 words; then `verified_at`, then the page's last commit date (`pages`, filled by
 the indexer). Each hit says which tier found it (`match`).
@@ -100,7 +100,9 @@ the brains whose claims match best. At most two. Never a brain outside
 
 When claims matched, the me card and the index are cut to a short head (1,200
 characters, or a tenth of the budget when that is more) so claims get most of
-the budget; with no match they keep their full share.
+the budget; with no match they keep their full share. A claim row over 700
+characters is cut in the output (its id opens the rest), and a row that does
+not fit is skipped, not allowed to hide the shorter rows after it.
 
 Profile keys it reads, all on the `brains` row: `meCard` (path of the owner's
 me card; only on a personal brain, used only for its owner), `indexPage`

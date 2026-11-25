@@ -214,6 +214,20 @@ describe('claims win the budget', () => {
     expect(result.text.length).toBeLessThanOrEqual(6000);
   });
 
+  it('cuts a very long row and still shows the rows after it', async () => {
+    const long = `Open Vendor accounts 22 detail ${'long measurement note '.repeat(150)}`;
+    await claim(LEDGER, long, 'wiki/log-long.md', '2026-11-24');
+    try {
+      const result = await buildContext(ME, { question: QUESTION, brain: LEDGER, depth: 3 }, { readPage });
+      const rows = result.text.split('\n').filter((l) => l.startsWith('- '));
+      expect(rows.every((l) => l.length < 1000)).toBe(true);
+      expect(result.text).toContain('[cut: get_claim for the rest]');
+      expect(result.text).toContain('Purchases and account numbers for the 22 accounts');
+    } finally {
+      await db().query('delete from claims where brain_id = $1 and page_path = $2', [LEDGER, 'wiki/log-long.md']);
+    }
+  });
+
   it('keeps the whole pages when nothing matches', async () => {
     const result = await buildContext(ME, { question: 'zzqx plugh', brain: LEDGER, depth: 3, budget: 12000 }, { readPage });
     expect(result.claims).toEqual([]);

@@ -168,7 +168,8 @@ export async function buildContext(userId: string, input: ContextInput, deps: Co
   for (const hit of hits) {
     const view = toClaimView(byId.get(hit.brain_id)!, hit);
     const line = claimLine(view, brains.length > 1);
-    if (line.length + 1 > room() - reserve) break;
+    // One row that does not fit must not hide the shorter rows after it.
+    if (line.length + 1 > room() - reserve) continue;
     result.claims.push(view);
     lines.push(line);
     used += line.length + 1;
@@ -285,6 +286,9 @@ export function trimPage(text: string, max: number): { text: string; truncated: 
   return { text: out ? out + note : '', truncated: true };
 }
 
+/** A claim row longer than this is cut: the id in the line opens the rest. */
+const CLAIM_LINE_MAX = 700;
+
 function claimLine(view: ClaimView, showBrain: boolean): string {
   const date = view.verified_at
     ? `verified ${view.verified_at}`
@@ -294,7 +298,9 @@ function claimLine(view: ClaimView, showBrain: boolean): string {
   const where = `${showBrain ? `${view.brain} ` : ''}${view.page}:${view.line}`;
   const some = view.match === 'any_words' ? `, some words ${view.coverage}` : '';
   const authority = view.authority ? `, ${view.authority}` : '';
-  return `- ${view.text.replace(/\s+/g, ' ')} [${date}${authority}; ${where}${some}; ${view.id.slice(0, 12)}]`;
+  const flat = view.text.replace(/\s+/g, ' ');
+  const text = flat.length > CLAIM_LINE_MAX ? `${flat.slice(0, CLAIM_LINE_MAX)} ... [cut: get_claim for the rest]` : flat;
+  return `- ${text} [${date}${authority}; ${where}${some}; ${view.id.slice(0, 12)}]`;
 }
 
 function sessionLine(chat: SessionSummary): string {
