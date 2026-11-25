@@ -15,7 +15,7 @@ describe('server instructions', () => {
 
   it('tell the agent when to use each tool', () => {
     const text = serverInstructions(true);
-    for (const tool of ['list_brains', 'search', 'list_files', 'get_file', 'add_file', 'remember', 'update_fact', 'forget']) {
+    for (const tool of ['context', 'list_brains', 'search', 'list_files', 'get_file', 'add_file', 'remember', 'update_fact', 'forget']) {
       expect(text).toContain(tool);
     }
     expect(text).toMatch(/without being asked/);

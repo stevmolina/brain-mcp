@@ -34,6 +34,11 @@ export interface SessionSummary {
   updated_at: string | null;
   turn_count: number;
   snippet?: string;
+  /** A short summary of the chat, when the sessions CLI has written one. */
+  card?: string | null;
+  card_updated_at?: string | null;
+  /** Which search found it: the title and card, or the full chat. */
+  match?: 'card' | 'body';
 }
 
 export interface ShareView {
@@ -107,6 +112,8 @@ interface SummaryRow {
   updated_at: Date | null;
   turn_count: number;
   snippet?: string | null;
+  card?: string | null;
+  card_updated_at?: Date | null;
 }
 
 function toSummary(row: SummaryRow): SessionSummary {
@@ -123,7 +130,32 @@ function toSummary(row: SummaryRow): SessionSummary {
     updated_at: iso(row.updated_at),
     turn_count: Number(row.turn_count),
     ...(row.snippet !== undefined ? { snippet: (row.snippet ?? '').replace(/\s+/g, ' ').trim() } : {}),
+    ...(row.card !== undefined ? { card: row.card?.trim() || null, card_updated_at: iso(row.card_updated_at ?? null) } : {}),
   };
+}
+
+/**
+ * Whether the sessions table has the `card` and `card_updated_at` columns the
+ * sessions CLI adds. Read from the catalog, cached for five minutes, so this
+ * server works the same before and after that migration.
+ */
+let cardColumns: { value: boolean; expiresAt: number } | undefined;
+export async function hasCardColumns(): Promise<boolean> {
+  if (cardColumns && cardColumns.expiresAt > Date.now()) return cardColumns.value;
+  const { rows } = await sessionsDb().query<{ n: number }>(
+    `select count(*)::int as n from pg_attribute
+      where attrelid = to_regclass('sessions') and attname in ('card', 'card_updated_at') and not attisdropped`,
+  );
+  cardColumns = { value: rows[0]?.n === 2, expiresAt: Date.now() + 5 * 60_000 };
+  return cardColumns.value;
+}
+
+export function resetSessionColumnsCache(): void {
+  cardColumns = undefined;
+}
+
+function summaryColumns(withCard: boolean): string {
+  return withCard ? `${SUMMARY_COLUMNS}, s.card, s.card_updated_at` : SUMMARY_COLUMNS;
 }
 
 const SUMMARY_COLUMNS = `s.source, s.id, s.provider, s.title, s.brain, s.cwd, s.machine, s.repos, s.started_at, s.updated_at,
@@ -158,6 +190,27 @@ export async function searchSessions(ownerId: string, options: SearchOptions): P
     repo, options.machine?.trim() || null, escapeLike(options.cwd?.trim() || null), limit,
   ];
 
+  const withCard = await hasCardColumns();
+  const columns = summaryColumns(withCard);
+
+  // With cards, the title and card are searched first: they say what a chat
+  // was about, while the body matches every word anyone ever typed.
+  let first: SessionSummary[] = [];
+  if (query && withCard) {
+    const { rows } = await sessionsDb().query<SummaryRow>(
+      `select ${columns}, coalesce(nullif(left(s.card, 240), ''), ts_headline('english', s.body, websearch_to_tsquery('english', $10), 'MaxWords=30, MinWords=10, MaxFragments=2')) as snippet
+         from sessions s
+        where ${filters}
+          and to_tsvector('english', coalesce(s.title, '') || ' ' || coalesce(s.card, '')) @@ websearch_to_tsquery('english', $10)
+        order by ts_rank(to_tsvector('english', coalesce(s.title, '') || ' ' || coalesce(s.card, '')), websearch_to_tsquery('english', $10)) desc,
+                 coalesce(s.updated_at, s.started_at) desc nulls last
+        limit $9`,
+      [...args, query],
+    );
+    first = rows.map((row) => ({ ...toSummary(row), match: 'card' as const }));
+    if (first.length >= limit) return first;
+  }
+
   // Two plans on purpose. The page is picked from narrow columns only; the
   // turn count, title and snippet are read for that page alone, because they
   // unpack the turns and body (up to a quarter of a megabyte per chat).
@@ -169,7 +222,7 @@ export async function searchSessions(ownerId: string, options: SearchOptions): P
           where ${filters} and s.search @@ websearch_to_tsquery('english', $10)
           order by rank desc, at desc nulls last
           limit $9)
-       select ${SUMMARY_COLUMNS},
+       select ${columns},
               ts_headline('english', s.body, websearch_to_tsquery('english', $10), 'MaxWords=30, MinWords=10, MaxFragments=2') as snippet
          from hits h join sessions s on s.source = h.source and s.id = h.id and s.owner = $1
         order by h.rank desc, h.at desc nulls last`
@@ -179,14 +232,68 @@ export async function searchSessions(ownerId: string, options: SearchOptions): P
           where ${filters}
           order by at desc nulls last
           limit $9)
-       select ${SUMMARY_COLUMNS},
+       select ${columns},
               left(coalesce((select t->>'text' from jsonb_array_elements(s.turns) t
                               where t->>'role' = 'user' limit 1), ''), 240) as snippet
          from hits h join sessions s on s.source = h.source and s.id = h.id and s.owner = $1
         order by h.at desc nulls last`;
   const { rows } = await sessionsDb().query<SummaryRow>(sql, query ? [...args, query] : args);
-  return rows.map(toSummary);
+  const seen = new Set(first.map((hit) => `${hit.source}:${hit.id}`));
+  const rest = rows
+    .map((row) => ({ ...toSummary(row), ...(query && withCard ? { match: 'body' as const } : {}) }))
+    .filter((hit) => !seen.has(`${hit.source}:${hit.id}`));
+  return [...first, ...rest].slice(0, limit);
 }
+
+/**
+ * The caller's own chats filed under the given brains that cover some of the
+ * question's words, for `context`. Title and card first (when the card columns
+ * exist), then the full chat. Same coverage floor as claim search: 1 of 1-2
+ * words, 2 of 3-5, 3 of 6 or more. Owner-filtered like every read here.
+ */
+export async function sessionsForQuestion(
+  ownerId: string,
+  brainIds: string[],
+  question: string,
+  limit: number,
+): Promise<SessionSummary[]> {
+  if (!brainIds.length || !question.trim()) return [];
+  const withCard = await hasCardColumns();
+  const columns = summaryColumns(withCard);
+  const about = withCard
+    ? `to_tsvector('english', coalesce(s.title, '') || ' ' || coalesce(s.card, ''))`
+    : `to_tsvector('english', coalesce(s.title, ''))`;
+  const terms = `with lex as (
+       select distinct lexeme from unnest(to_tsvector('english', $3))
+        where lexeme !~ '[''\\\\:&|!()<>*]'
+     ), q as (
+       select array_agg(to_tsquery('simple', quote_literal(lexeme) || case when length(lexeme) >= 3 then ':*' else '' end)) as each,
+              to_tsquery('simple', string_agg(quote_literal(lexeme) || case when length(lexeme) >= 3 then ':*' else '' end, ' | ')) as anyq,
+              count(*)::int as terms
+         from lex
+     )`;
+  const floor = 'case when q.terms <= 2 then 1 when q.terms <= 5 then 2 else 3 end';
+  const out: SessionSummary[] = [];
+  for (const [match, vector] of [['card', about], ['body', 's.search']] as const) {
+    const { rows } = await sessionsDb().query<SummaryRow>(
+      `${terms}
+       select ${columns}, ${withCard ? `left(coalesce(s.card, ''), 400)` : `''`} as snippet
+         from q
+         join sessions s on s.owner = $1 and s.brain = any($2) and ${vector} @@ q.anyq
+         cross join lateral (select count(*)::int as n from unnest(q.each) t where ${vector} @@ t) cov
+        where q.terms > 0 and cov.n >= ${floor}
+          and not ((s.source || ':' || s.id) = any($5))
+        order by cov.n desc, coalesce(s.updated_at, s.started_at) desc nulls last
+        limit $4`,
+      [ownerId, brainIds, question, limit - out.length, out.map((hit) => `${hit.source}:${hit.id}`)],
+    );
+    out.push(...rows.map((row) => ({ ...toSummary(row), match })));
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+
 
 /** Makes text safe inside an ILIKE pattern. */
 function escapeLike(text: string | null): string | null {

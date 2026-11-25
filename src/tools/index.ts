@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { brainFilesFromEnv } from '../files/index.js';
 import { registerBrainTools } from './brains.js';
+import { registerContextTool } from './context.js';
 import { registerFileTools } from './files.js';
 import { registerReadTools } from './read.js';
 import { registerSessionTools } from './sessions.js';
@@ -26,7 +27,8 @@ export function serverInstructions(withFiles: boolean, withSessions = false): st
     'There is one brain per project or client, with an id like owner/repo; list_brains shows yours.',
     '',
     'Use it without being asked:',
-    '- Before answering anything about a project, client, person, past decision or "what did we decide", search the matching brain (list_brains first if you lack its id). Cite each claim you use by its page, and its date when it has one.',
+    '- Call context first with the user\'s question. It returns dated lines; the newest dated fact wins.',
+    '- For more, search the matching brain. Cite each claim by its page, and its date when it has one.',
   ];
   if (withFiles) {
     lines.push(
@@ -35,7 +37,7 @@ export function serverInstructions(withFiles: boolean, withSessions = false): st
     );
   }
   lines.push(
-    '- When a durable decision or fact is settled in the conversation, record it with remember; use update_fact or forget for an outdated claim. A write opens a pull request a person merges, or commits directly when the owner turned direct writes on. Tell the user which the result says.',
+    '- When a durable decision or fact is settled in the conversation, record it with remember; use update_fact or forget for an outdated claim. An owner with direct writes on commits straight to main; anyone else opens a pull request. Tell the user which happened.',
     '',
     'Pick the brain by the project or client the user names. If several match, say which one you used.',
     '',
@@ -94,6 +96,7 @@ export function registerOperations(server: ToolRegistrar, ctx: ToolContext): voi
   const files = brainFilesFromEnv();
   const sessions = sessionsEnabled();
   registerBrainTools(server);
+  registerContextTool(server);
   registerReadTools(server, ctx);
   registerWriteTools(server, ctx);
   if (files) registerFileTools(server, files);

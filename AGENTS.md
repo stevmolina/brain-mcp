@@ -80,6 +80,29 @@ words, 2 of 3-5, 3 of 6+. More words covered ranks first, then `verified_at`,
 then the page's last commit date (`pages`, filled by the indexer). Each hit says
 which tier found it (`match`).
 
+## Context
+
+`context` (MCP tool, REST `GET|POST /api/v1/context`) answers "what should I
+read before answering this question" in one call, within a character budget
+(default 6000). `src/context/build.ts` walks four levels and stops when the
+budget is spent or claims already answer (3+ all-words hits, unless `depth: 4`
+was asked for): 1 the caller's own me card, 2 the target brain's index page,
+3 claims, 4 the caller's own chats in that brain. Every line carries a date.
+
+Brain choice: explicit `brain` (through `requireBrain`), else a reachable
+brain named in the question or `cwd` by a profile alias or its repo name, else
+the brains whose claims match best. At most two. Never a brain outside
+`accessibleBrains`.
+
+Profile keys it reads, all on the `brains` row: `meCard` (path of the owner's
+me card; only on a personal brain, used only for its owner), `indexPage`
+(default `wiki/index.md`), `aliases` (string array: client and product names).
+Aliases are tenant data, so they live in the database, never in this repo.
+
+Chats: `card` and `card_updated_at` on `sessions` come from the sessions CLI.
+When both columns exist, `search_sessions` and `context` search title + card
+first, then the body; without them, everything works as before.
+
 ## Auth
 
 WorkOS AuthKit is the authorization server; this is a **resource server only**.

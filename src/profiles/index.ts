@@ -26,6 +26,16 @@ export interface BrainProfile {
    * the stored profile says exactly `true`.
    */
   directWrites: boolean;
+  /** The page `context` reads as this brain's map: what is where. */
+  indexPage: string;
+  /**
+   * The owner's "me card": a page about who they are and how they work, which
+   * `context` puts first for that owner. Set only on a personal brain.
+   */
+  meCard: string | null;
+  /** Other names for this brain (a client, a product), so `context` can pick
+   * it from a question. Data on the brains row, never in code. */
+  aliases: string[];
 }
 
 export const DEFAULT_PROFILE: BrainProfile = {
@@ -41,6 +51,9 @@ export const DEFAULT_PROFILE: BrainProfile = {
   writeHeading: 'Claims',
   staleLiveDays: 90,
   directWrites: false,
+  indexPage: 'wiki/index.md',
+  meCard: null,
+  aliases: [],
 };
 
 export function resolveProfile(stored: unknown): BrainProfile {
@@ -49,6 +62,11 @@ export function resolveProfile(stored: unknown): BrainProfile {
   // A switch that changes who can write to main: only a literal true turns it on,
   // so a stray "false" string or 1 in the jsonb never does.
   profile.directWrites = overrides.directWrites === true;
+  profile.indexPage = typeof overrides.indexPage === 'string' && overrides.indexPage ? overrides.indexPage : DEFAULT_PROFILE.indexPage;
+  profile.meCard = typeof overrides.meCard === 'string' && overrides.meCard ? overrides.meCard : null;
+  profile.aliases = Array.isArray(overrides.aliases)
+    ? overrides.aliases.filter((alias): alias is string => typeof alias === 'string' && alias.trim().length >= 2).map((a) => a.trim())
+    : [];
 
   // sources/ is evidence, not claims. The exclusion is structural, not configurable:
   // the write path must never be able to reach it either.
