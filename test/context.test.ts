@@ -80,6 +80,7 @@ beforeAll(async () => {
   await claim(ORCHARD, 'Milestone 2 demo is on 2026-12-03.', 'wiki/milestones.md', '2026-11-01');
   await claim(ORCHARD, 'Invoices go out on the first business day.', 'wiki/billing.md');
   await claim(HARBOR, 'The harbor tug is serviced every March.', 'wiki/boats.md');
+  await claim(PERSONAL, '`app.personal.autoupdate`: builds the personal site every 5 minutes.', 'wiki/machines.md');
   await claim(FOREIGN, 'Foreign secret: the orchard demo is cancelled.', 'wiki/milestones.md');
   await chat('c1', ME, ORCHARD, 'Planning the milestone demo', 'Agreed the milestone 2 demo agenda with the orchard board.', 'long body');
   await chat('c2', ME, ORCHARD, 'Unrelated', null, 'we talked about the milestone demo in passing');
@@ -160,6 +161,13 @@ describe('levels', () => {
     expect(result.sessions.map((s) => s.id)).not.toContain('c3');
     expect(result.text).not.toContain('Other person secret');
     expect(result.text).not.toContain('Tug chat');
+  });
+
+  it('finds a fact whose own words include the brain's alias', async () => {
+    // "personal" is the brain's alias and also the claim's own word: dropping
+    // it before searching would leave only "machine" (from the page path).
+    const result = await buildContext(ME, { question: 'Which machine runs the personal update job?', brain: PERSONAL, depth: 3 }, { readPage });
+    expect(result.claims[0]?.text).toMatch(/autoupdate/);
   });
 
   it('stops at the depth asked for', async () => {
