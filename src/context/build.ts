@@ -77,7 +77,8 @@ export async function buildContext(userId: string, input: ContextInput, deps: Co
     ? { brains: [await requireBrain(userId, input.brain)], how: 'explicit' as const }
     : await chooseBrains(reachable!, question, input.cwd);
 
-  const parts: string[] = [`# Context for: ${question}`, CONTEXT_HEADER];
+  const shown = question.length > 200 ? `${question.slice(0, 200)}...` : question;
+  const parts: string[] = [`# Context for: ${shown}`, CONTEXT_HEADER];
   let used = parts.join('\n').length;
   const room = () => budget - used;
   const add = (block: string) => {
@@ -107,9 +108,12 @@ export async function buildContext(userId: string, input: ContextInput, deps: Co
   if (personal) {
     const page = await readPage(personal, resolveProfile(personal.profile).meCard!).catch(() => null);
     if (page) {
-      const trimmed = trimPage(page.text, Math.min(Math.floor(budget * 0.25), room()));
-      result.me = { ...page, brain: personal.id, text: trimmed.text, truncated: trimmed.truncated };
-      add(`\n## Me card (${personal.id} ${page.path}, updated ${page.updated_at ?? 'undated'})\n${trimmed.text}`);
+      const head = `\n## Me card (${personal.id} ${page.path}, updated ${page.updated_at ?? 'undated'})\n`;
+      const trimmed = trimPage(page.text, Math.min(Math.floor(budget * 0.25), room()) - head.length - 1);
+      if (trimmed.text) {
+        result.me = { ...page, brain: personal.id, text: trimmed.text, truncated: trimmed.truncated };
+        add(head + trimmed.text);
+      }
     }
   }
   if (depth < 2) return finish('depth');
@@ -121,10 +125,11 @@ export async function buildContext(userId: string, input: ContextInput, deps: Co
     const path = resolveProfile(brain.profile).indexPage;
     const page = await readPage(brain, path).catch(() => null);
     if (!page) continue;
-    const trimmed = trimPage(page.text, Math.min(Math.floor((budget * 0.2) / brains.length), room() - 100));
+    const head = `\n## Index of ${brain.id} (${page.path}, updated ${page.updated_at ?? 'undated'})\n`;
+    const trimmed = trimPage(page.text, Math.min(Math.floor((budget * 0.2) / brains.length), room() - 100) - head.length - 1);
     if (!trimmed.text) continue;
     result.index.push({ ...page, brain: brain.id, text: trimmed.text, truncated: trimmed.truncated });
-    add(`\n## Index of ${brain.id} (${page.path}, updated ${page.updated_at ?? 'undated'})\n${trimmed.text}`);
+    add(head + trimmed.text);
   }
   if (depth < 3) return finish('depth');
   if (room() < 200) return finish('budget');
@@ -138,16 +143,17 @@ export async function buildContext(userId: string, input: ContextInput, deps: Co
   const reserve = depth >= 4 && sessionsEnabled() ? Math.floor(budget * 0.15) : 0;
   const byId = new Map(brains.map((b) => [b.id, b]));
   const lines: string[] = [];
+  // Room for the heading and the "No matching claims." line, counted up front.
+  used += 60;
   for (const hit of hits) {
     const view = toClaimView(byId.get(hit.brain_id)!, hit);
     const line = claimLine(view, brains.length > 1);
-    if (line.length + 1 > room() - reserve - (lines.length ? 0 : 20)) break;
+    if (line.length + 1 > room() - reserve) break;
     result.claims.push(view);
     lines.push(line);
     used += line.length + 1;
   }
   parts.push(`\n## Claims (${result.claims.length} of ${hits.length} found)`, ...(lines.length ? lines : ['No matching claims.']));
-  used += 30;
   const strict = result.claims.filter((c) => c.match === 'all_words').length;
   if (depth < 4) return finish('depth');
   if (!sessionsEnabled()) return finish('done');
@@ -158,6 +164,8 @@ export async function buildContext(userId: string, input: ContextInput, deps: Co
   result.stopped_at = 4;
   try {
     const chats = await sessionsForQuestion(userId, brains.map((b) => b.id), searchText, 5);
+    const chatsHead = '\n## Your chats (private to you)';
+    used += chatsHead.length + 1;
     const chatLines: string[] = [];
     for (const chat of chats) {
       const line = sessionLine(chat);
@@ -166,7 +174,7 @@ export async function buildContext(userId: string, input: ContextInput, deps: Co
       chatLines.push(line);
       used += line.length + 1;
     }
-    if (chatLines.length) parts.push('\n## Your chats (private to you)', ...chatLines);
+    if (chatLines.length) parts.push(chatsHead, ...chatLines);
   } catch (error) {
     console.error(JSON.stringify({ level: 'warn', at: 'context.sessions', message: String(error) }));
   }

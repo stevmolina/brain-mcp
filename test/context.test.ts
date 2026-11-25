@@ -171,8 +171,8 @@ describe('levels', () => {
   });
 
   it('stays within the budget', async () => {
-    for (const budget of [1000, 2500, 6000]) {
-      const result = await buildContext(ME, { question: 'Orchard Co milestone demo invoices', budget }, { readPage });
+    for (const [budget, question] of [[1000, 'Orchard Co milestone demo invoices'], [2500, 'Orchard Co milestone demo agenda'], [6000, 'Orchard Co milestone demo'], [1000, `Orchard Co demo ${'very long question '.repeat(100)}`]] as const) {
+      const result = await buildContext(ME, { question, budget, depth: 4 }, { readPage });
       expect(result.text.length, String(budget)).toBeLessThanOrEqual(budget);
       expect(result.used).toBe(result.text.length);
     }

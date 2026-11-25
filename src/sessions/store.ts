@@ -198,7 +198,7 @@ export async function searchSessions(ownerId: string, options: SearchOptions): P
   let first: SessionSummary[] = [];
   if (query && withCard) {
     const { rows } = await sessionsDb().query<SummaryRow>(
-      `select ${columns}, left(coalesce(s.card, ''), 240) as snippet
+      `select ${columns}, coalesce(nullif(left(s.card, 240), ''), ts_headline('english', s.body, websearch_to_tsquery('english', $10), 'MaxWords=30, MinWords=10, MaxFragments=2')) as snippet
          from sessions s
         where ${filters}
           and to_tsvector('english', coalesce(s.title, '') || ' ' || coalesce(s.card, '')) @@ websearch_to_tsquery('english', $10)
