@@ -116,6 +116,35 @@ Chats: `card` and `card_updated_at` on `sessions` come from the sessions CLI.
 When both columns exist, `search_sessions` and `context` search title + card
 first, then the body; without them, everything works as before.
 
+## Cold start (the warmer)
+
+`context` runs at the start of every chat, often after a quiet spell, and a
+cold call used to cost 2.7 s (4.3 s when Neon was asleep) against 0.7 s warm,
+measured from the Resorsi VPS on 2026-11-26. Callers cap the wait at 3 to 4.5 s,
+so a cold first call lost its context without a trace. Three changes:
+
+- **Pages keyed by commit.** `src/context/pages.ts` caches a me card or index
+  page per brain and path, keyed by `brains.last_indexed_commit`. A page cannot
+  change without a commit, and the indexer moves that column after each push, so
+  a hit needs no GitHub read and lives until the next push (one hour at most;
+  one minute before a brain has been indexed). Concurrent misses share one read.
+- **The warmer, `src/warm.ts`.** Every 20 s it runs one light query on each
+  database pool, renews the GitHub install token, and re-reads the pages (a no-op
+  until a push). Every 5 minutes it refreshes the owner's WorkOS profile and GitHub
+  login (keeping the old answer if the refresh fails), the token signing keys
+  and the sessions column check. Pool idle timeouts are unchanged: the 20 s query
+  keeps one connection of each pool hot.
+- **Neon is not kept awake all month.** The brain database is on Neon, billed
+  while awake: a query every 20 s would be about 182 compute-hours a month, and
+  the project used 17 in November (the sessions database already ran out of free
+  compute once). So the warmer queries Neon only for `WARM_DB_MINUTES` (default
+  30) after the last MCP or REST request. After that Neon sleeps as before and
+  the first call of the next burst pays its wake-up (about 1.6 s). The steps that
+  do not touch Neon run for `WARM_ACTIVE_MINUTES` (default 720). `WARM_INTERVAL_MS=0`
+  turns the warmer off.
+
+`test/warm.test.ts` holds the cache and the loop, with fakes.
+
 ## Auth
 
 WorkOS AuthKit is the authorization server; this is a **resource server only**.

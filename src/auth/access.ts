@@ -60,28 +60,34 @@ async function resolveCaller(principal: string): Promise<Caller | null> {
 }
 
 /** The GitHub login behind a WorkOS user, via their linked GitHub identity. */
-export async function githubLoginForWorkosUser(workosUserId: string): Promise<string | null> {
+export async function githubLoginForWorkosUser(
+  workosUserId: string,
+  options?: { refresh: true },
+): Promise<string | null> {
   if (isScopedPrincipal(workosUserId)) {
     const caller = await resolveCaller(workosUserId);
     return caller ? githubLoginForWorkosUser(caller.userId) : null;
   }
   if (isPokebotsPrincipal(workosUserId)) return null;
-  const cached = readCache(identityCache, workosUserId);
+  const cached = options?.refresh ? undefined : readCache(identityCache, workosUserId);
   if (cached !== undefined) return cached;
+  // A background refresh keeps the last good login when WorkOS or GitHub fails.
+  const previous = options?.refresh ? readCache(identityCache, workosUserId) : undefined;
+  const failed = () => (previous ? previous : writeCache(identityCache, workosUserId, null, 30_000));
 
   const config = loadConfig();
   const response = await fetch(
     `https://api.workos.com/user_management/users/${encodeURIComponent(workosUserId)}/identities`,
     { headers: { Authorization: `Bearer ${config.workosApiKey}` } },
   );
-  if (!response.ok) return writeCache(identityCache, workosUserId, null, 30_000);
+  if (!response.ok) return failed();
 
   const body = (await response.json()) as Array<{ idp_id?: string; provider?: string; type?: string }> | {
     data?: Array<{ idp_id?: string; provider?: string }>;
   };
   const identities = Array.isArray(body) ? body : (body.data ?? []);
   const github = identities.find((i) => /github/i.test(i.provider ?? ''));
-  if (!github?.idp_id) return writeCache(identityCache, workosUserId, null, 30_000);
+  if (!github?.idp_id) return failed();
 
   const login = await githubLoginForAccountId(github.idp_id);
   // Identity is stable; cache it longer than repo access, which is not.

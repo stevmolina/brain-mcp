@@ -16,7 +16,15 @@ export interface WorkosProfile {
 
 const cache = new Map<string, { value: WorkosProfile | null; expiresAt: number }>();
 
-export async function workosProfile(userId: string, options?: { fresh: true }): Promise<WorkosProfile | null> {
+/**
+ * `fresh` skips the cache. `keepOnFailure` (the background refresh) leaves the
+ * old answer in place when WorkOS cannot be reached, so a blip never replaces a
+ * good profile with a short-lived "unknown".
+ */
+export async function workosProfile(
+  userId: string,
+  options?: { fresh: true; keepOnFailure?: boolean },
+): Promise<WorkosProfile | null> {
   // A scoped token has no email: it cannot share chats or open shared ones.
   if (isPokebotsPrincipal(userId) || isScopedPrincipal(userId)) return null;
   const hit = cache.get(userId);
@@ -47,6 +55,7 @@ export async function workosProfile(userId: string, options?: { fresh: true }): 
   } catch (error) {
     console.error(JSON.stringify({ level: 'warn', at: 'identity', message: String(error) }));
   }
+  if (!value && options?.keepOnFailure && hit?.value) return hit.value;
   // Short on failure so a WorkOS blip heals quickly; longer on success.
   cache.set(userId, { value, expiresAt: Date.now() + (value ? 10 * 60_000 : 30_000) });
   return value;

@@ -140,14 +140,23 @@ function toSummary(row: SummaryRow): SessionSummary {
  * server works the same before and after that migration.
  */
 let cardColumns: { value: boolean; expiresAt: number } | undefined;
-export async function hasCardColumns(): Promise<boolean> {
-  if (cardColumns && cardColumns.expiresAt > Date.now()) return cardColumns.value;
+async function readCardColumns(): Promise<boolean> {
   const { rows } = await sessionsDb().query<{ n: number }>(
     `select count(*)::int as n from pg_attribute
       where attrelid = to_regclass('sessions') and attname in ('card', 'card_updated_at') and not attisdropped`,
   );
-  cardColumns = { value: rows[0]?.n === 2, expiresAt: Date.now() + 5 * 60_000 };
-  return cardColumns.value;
+  return rows[0]?.n === 2;
+}
+
+export async function hasCardColumns(): Promise<boolean> {
+  if (cardColumns && cardColumns.expiresAt > Date.now()) return cardColumns.value;
+  await refreshSessionColumns();
+  return cardColumns!.value;
+}
+
+/** Re-reads the column check, replacing the cached answer only when the read works. */
+export async function refreshSessionColumns(): Promise<void> {
+  cardColumns = { value: await readCardColumns(), expiresAt: Date.now() + 5 * 60_000 };
 }
 
 export function resetSessionColumnsCache(): void {

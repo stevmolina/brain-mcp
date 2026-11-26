@@ -3,9 +3,14 @@
  *
  * Read from GitHub (the truth) rather than rebuilt from claims, because these
  * pages are prose meant to be read whole. Only called with a brain the caller
- * already resolved through requireBrain or accessibleBrains. Cached for a
- * minute per brain and path, after that check, so a burst of hook calls costs
- * one GitHub read.
+ * already resolved through requireBrain or accessibleBrains.
+ *
+ * Cached per brain and path, keyed by the commit the indexer last processed
+ * (`brains.last_indexed_commit`). A page cannot change without a new commit, and
+ * the indexer moves that column after every push to the default branch, so a
+ * cached page stays right until the next push and a call costs no GitHub read.
+ * Before the first index there is no commit to key on, so the entry lives a
+ * minute. An entry also never outlives an hour.
  */
 import { db } from '../db/client.js';
 import { installationOctokit } from '../github/app.js';
@@ -21,13 +26,52 @@ export interface BrainPage {
 
 export type PageReader = (brain: BrainRow, path: string) => Promise<BrainPage | null>;
 
-const cache = new Map<string, { value: BrainPage | null; expiresAt: number }>();
+interface Entry {
+  value: BrainPage | null;
+  /** The brain's indexed commit when the page was read; null before the first index. */
+  commit: string | null;
+  readAt: number;
+}
+
+const cache = new Map<string, Entry>();
+const inflight = new Map<string, Promise<BrainPage | null>>();
+/** Entry life when the brain has no indexed commit to key on. */
+const UNKEYED_TTL_MS = 60_000;
+/** The longest any entry lives, so a missed webhook cannot pin an old page. */
+const MAX_AGE_MS = 60 * 60_000;
+
+function fresh(entry: Entry, brain: BrainRow): boolean {
+  const age = Date.now() - entry.readAt;
+  if (age >= MAX_AGE_MS) return false;
+  return brain.last_indexed_commit ? entry.commit === brain.last_indexed_commit : age < UNKEYED_TTL_MS;
+}
 
 export const readBrainPage: PageReader = async (brain, path) => {
   const key = `${brain.id}::${path}`;
   const hit = cache.get(key);
-  if (hit && hit.expiresAt > Date.now()) return hit.value;
+  if (hit && fresh(hit, brain)) return hit.value;
 
+  // One GitHub read per page at a time, so a burst of calls shares it.
+  const flightKey = `${key}::${brain.last_indexed_commit ?? ''}`;
+  const running = inflight.get(flightKey);
+  if (running) return running;
+  const read = fetchPage(brain, path)
+    .then((value) => {
+      cache.set(key, { value, commit: brain.last_indexed_commit, readAt: Date.now() });
+      return value;
+    })
+    .finally(() => inflight.delete(flightKey));
+  inflight.set(flightKey, read);
+  return read;
+};
+
+/** Forgets every cached page. For tests. */
+export function clearPageCache(): void {
+  cache.clear();
+  inflight.clear();
+}
+
+async function fetchPage(brain: BrainRow, path: string): Promise<BrainPage | null> {
   let value: BrainPage | null = null;
   if (brain.installation_id) {
     const github = await installationOctokit(brain.installation_id);
@@ -58,9 +102,8 @@ export const readBrainPage: PageReader = async (brain, path) => {
       if ((error as { status?: number }).status !== 404) throw error;
     }
   }
-  cache.set(key, { value, expiresAt: Date.now() + 60_000 });
   return value;
-};
+}
 
 /** The indexer's date for the page, else one GitHub call. */
 async function pageDate(brain: BrainRow, path: string, fromGithub: () => Promise<string | null>): Promise<string | null> {
