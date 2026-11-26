@@ -19,6 +19,11 @@ import { isScopedPrincipal, looksLikeAccessToken, principalForToken, scopeOf } f
 let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
 let metadata: OAuthMetadata | undefined;
 
+/** Fetches the signing keys again, so a request never waits for their cache to expire. A no-op before the first token. */
+export async function refreshJwks(): Promise<void> {
+  if (jwks) await jwks.reload();
+}
+
 /** AuthKit's RFC 8414 document, fetched once and passed through verbatim. */
 export async function authorizationServerMetadata(): Promise<OAuthMetadata> {
   if (metadata) return metadata;

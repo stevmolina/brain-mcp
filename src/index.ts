@@ -32,6 +32,7 @@ import { db } from './db/client.js';
 import { sessionsEnabled } from './sessions/db.js';
 import { mountRest } from './api/routes.js';
 import { mountWeb } from './web/routes.js';
+import { markActivity, startWarmer } from './warm.js';
 
 const VERSION = '0.1.0';
 
@@ -63,6 +64,11 @@ export async function createApp(): Promise<express.Express> {
   // Behind Traefik, but the guard costs nothing and stops a rebinding attempt
   // reaching the app if the box is ever addressed directly.
   app.use(hostHeaderValidation(config.allowedHosts));
+  // Someone is using the server: the warmer keeps its caches hot for a while.
+  app.use((req, _res, next) => {
+    if (req.path.startsWith('/mcp') || req.path.startsWith('/api/v1')) markActivity();
+    next();
+  });
 
   // Registered before the JSON parser: the signature is over the raw body.
   app.post(
@@ -173,6 +179,8 @@ if (startedDirectly) {
   const config = loadConfig();
   const app = await createApp();
   app.listen(config.port, config.bindHost, () => {
+    // Keep the first call of a chat as fast as the rest (see src/warm.ts).
+    void startWarmer()?.cycle();
     console.log(
       JSON.stringify({
         level: 'info',

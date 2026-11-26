@@ -23,6 +23,7 @@ export function sessionsDb(): pg.Pool {
       connectionString: config.databaseUrl,
       max: Number(process.env.SESSIONS_PG_POOL_MAX || 4),
       idleTimeoutMillis: 30_000,
+      keepAlive: true,
       connectionTimeoutMillis: 10_000,
     });
     pool.on('error', (err) => {

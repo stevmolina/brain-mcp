@@ -9,6 +9,7 @@ export function db(): pg.Pool {
       connectionString: loadConfig().databaseUrl,
       max: Number(process.env.PG_POOL_MAX || 8),
       idleTimeoutMillis: 30_000,
+      keepAlive: true,
       connectionTimeoutMillis: 10_000,
     });
     pool.on('error', (err) => {
