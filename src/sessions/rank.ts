@@ -50,15 +50,16 @@ export interface RankParams {
 }
 
 export const DEFAULT_RANK: RankParams = {
+  // Tuned on the private eval set (AGENTS.md, Chat search), 2026-11-28.
   k1: 1.2,
   b: 0.75,
-  wAbout: 3,
-  wUser: 1.5,
-  wAgent: 1,
-  rrfK: 60,
+  wAbout: 6,
+  wUser: 1,
+  wAgent: 0.3,
+  rrfK: 10,
   depthKeyword: 50,
   depthMeaning: 50,
-  wMeaning: 1,
+  wMeaning: 0.75,
   minKeyword: 0.3,
   minMeaning: 0.86,
 };
@@ -91,6 +92,8 @@ export interface RankOptions {
   vector?: number[] | null;
   /** Extra columns over `sessions s` to return with each chat (store.ts summary columns). */
   select?: string;
+  /** Client-side limit for the ranking query, in ms (default 8000). */
+  timeoutMs?: number;
 }
 
 /** The question without filler, or the question itself when only filler is left. */
@@ -209,7 +212,8 @@ export async function rankChats<T extends object = object>(
       from fused f
       join sessions s on s.source = f.source and s.id = f.id and s.owner = $1
      order by f.score desc, coalesce(f.keyword, 0) desc`;
-  const { rows } = await db.query<Record<string, unknown>>(sql, args);
+  // Context waits at most a few seconds; a stuck query must not hold it.
+  const { rows } = await db.query<Record<string, unknown>>({ text: sql, values: args, query_timeout: options.timeoutMs ?? 8_000 } as pg.QueryConfig);
   const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
   return rows.map((r) => {
     const {

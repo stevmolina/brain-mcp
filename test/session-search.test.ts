@@ -92,6 +92,9 @@ beforeAll(async () => {
     turns(['user', pokebotsTurn('How much RAM is the box using?')], ['assistant', 'Memory use is 3.1 GB of 8.']));
   await seed('a-invoice', ALICE, 'test-org/beta', 'Billing run', null,
     turns(['user', pokebotsTurn('Send the October invoices to the pelican client.')], ['assistant', 'Invoices sent.']));
+  // A Spanish chat that shares one ordinary word with the question below.
+  await seed('a-linkedin', ALICE, 'test-org/alpha', 'LinkedIn', null,
+    turns(['user', pokebotsTurn('Actualizá mi perfil de LinkedIn con el puesto nuevo.')], ['assistant', 'Listo, actualizado.']));
   for (let i = 0; i < 4; i++) {
     await seed(`a-noise-${i}`, ALICE, 'test-org/alpha', `Kettle chat ${i}`, null,
       turns(['user', pokebotsTurn(`Tell me a joke number ${i}.`)], ['assistant', 'Here is a joke.']));
@@ -149,7 +152,7 @@ describe('ranking with the index', () => {
   beforeAll(async () => {
     setEmbedder(fake, { ready: true });
     const result = await syncSessionIndex(sessionsDb(), { owner: ALICE, embedder: fake, rebuild: true });
-    expect(result.indexed).toBe(7);
+    expect(result.indexed).toBe(8);
     await syncSessionIndex(sessionsDb(), { owner: BOB, embedder: fake, rebuild: true });
   });
 

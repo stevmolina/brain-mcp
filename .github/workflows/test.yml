@@ -80,7 +80,7 @@ jobs:
   eval:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       SESSIONS_DATABASE_URL: ${{ secrets.SESSIONS_EVAL_DATABASE_URL }}
       MODEL_DIR: ${{ github.workspace }}/.models

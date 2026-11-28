@@ -206,14 +206,18 @@ function cardForMeaning(card: string | null): string {
 }
 
 /** Turns a raw chat into what the index stores. Pure, so tests can call it. */
-export function prepareChat(row: Omit<SourceRow, 'fp'> & { fp?: string }, boilerplate?: ReadonlySet<string>): IndexedChat {
+export function prepareChat(
+  row: Omit<SourceRow, 'fp'> & { fp?: string },
+  boilerplate?: ReadonlySet<string>,
+  options: { raw?: boolean } = {},
+): IndexedChat {
   const user: string[] = [];
   const agent: string[] = [];
   const pairs: { user: string; agent: string }[] = [];
   for (const turn of row.turns ?? []) {
     const text = String(turn.text ?? '');
     if (turn.role === 'user') {
-      const clean = cleanTurn(text, boilerplate);
+      const clean = options.raw ? text.replace(/[ \t]+/g, ' ').trim() : cleanTurn(text, boilerplate);
       if (clean) {
         user.push(clean);
         pairs.push({ user: clean, agent: '' });
@@ -252,6 +256,8 @@ export interface SyncOptions {
   max?: number;
   /** Recount pasted lines and rebuild every chat. */
   rebuild?: boolean;
+  /** Index raw turns, without cleaning (only to measure what cleaning buys). */
+  raw?: boolean;
   log?: (message: string) => void;
 }
 
@@ -284,7 +290,7 @@ export async function syncSessionIndex(db: pg.Pool, options: SyncOptions = {}): 
         : (await db.query<{ owner: string }>(`select distinct owner from sessions where owner is not null`)).rows.map((r) => r.owner);
 
       for (const owner of owners) {
-        const boiler = await loadBoilerplate(db, s, owner, options.rebuild ?? false, options.log);
+        const boiler = options.raw ? undefined : await loadBoilerplate(db, s, owner, options.rebuild ?? false, options.log);
         if (options.rebuild) await db.query(`update ${s}.session_docs set src_fp = '' where owner = $1`, [owner]);
 
         const { rowCount } = await db.query(
@@ -323,7 +329,7 @@ export async function syncSessionIndex(db: pg.Pool, options: SyncOptions = {}): 
               where s.owner = $3`,
             [keys.map((k) => k.source), keys.map((k) => k.id), owner, INDEX_VERSION],
           );
-          const chats = rows.map((row) => prepareChat(row, boiler));
+          const chats = rows.map((row) => prepareChat(row, boiler, { raw: options.raw }));
           await writeChats(db, s, chats);
           result.embedded += await embedChunks(db, s, chats, options.embedder ?? null);
           result.indexed += chats.length;

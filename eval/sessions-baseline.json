@@ -1,0 +1,15 @@
+{
+  "note": "Floor for chat search on the private eval set (53 questions with an answer, 6 without). Scores of the shipped version, 2026-11-28. Raise these when a change scores higher; never lower them to pass. tolerance absorbs small drift as old chats keep growing.",
+  "tolerance": 0.03,
+  "systems": {
+    "hybrid": { "recall@5": 0.718, "MRR@10": 0.805 },
+    "keyword": { "recall@5": 0.628, "MRR@10": 0.699 }
+  },
+  "history": [
+    { "step": "before: English-only word search", "recall@5": 0.325, "MRR@10": 0.368, "negatives_empty": "0/6" },
+    { "step": "BM25 keywords on raw text", "recall@5": 0.551, "MRR@10": 0.583 },
+    { "step": "BM25 keywords on cleaned text", "recall@5": 0.628, "MRR@10": 0.699, "negatives_empty": "5/6" },
+    { "step": "meaning only (local multilingual E5)", "recall@5": 0.564, "MRR@10": 0.586, "negatives_empty": "5/6" },
+    { "step": "hybrid, reciprocal rank fusion (shipped)", "recall@5": 0.718, "MRR@10": 0.805, "negatives_empty": "5/6" }
+  ]
+}

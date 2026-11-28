@@ -46,11 +46,15 @@ const { values } = parseArgs({
     schema: { type: 'string', default: 'brain_mcp' },
     build: { type: 'boolean', default: false },
     rebuild: { type: 'boolean', default: false },
+    // Build the index from raw turns (no cleaning), to measure cleaning alone.
+    raw: { type: 'boolean', default: false },
     systems: { type: 'string', default: 'legacy,keyword,meaning,hybrid' },
     check: { type: 'string' },
     verbose: { type: 'boolean', default: false },
     dump: { type: 'string' },
     grid: { type: 'boolean', default: false },
+    // A JSON file with a list of parameter sets to score instead of the built-in grid.
+    'grid-json': { type: 'string' },
     params: { type: 'string' },
     // Score only chats started before the cases were written, so new chats
     // do not move the numbers. --no-frozen scores against everything.
@@ -103,7 +107,8 @@ async function score(system: string, cases: Case[], rank: Ranker, runs?: Record<
   const byKind: Score['byKind'] = {};
   for (const c of cases) {
     const started = performance.now();
-    const ranked = (await rank(c)).filter((key) => !c.exclude.includes(key));
+    // One retry: a query lost on a flaky network times out instead of hanging.
+    const ranked = (await rank(c).catch(() => rank(c))).filter((key) => !c.exclude.includes(key));
     times.push(performance.now() - started);
     if (runs) runs[c.id] = Object.fromEntries(ranked.slice(0, 10).map((key, i) => [key, 10 - i]));
     const rel = Object.entries(c.relevant).filter(([, g]) => g > 0).map(([k]) => k);
@@ -174,7 +179,7 @@ async function main(): Promise<void> {
     for (const owner of owners) {
       const started = Date.now();
       const r = await syncSessionIndex(db, {
-        schema, owner, embedder, rebuild: values.rebuild,
+        schema, owner, embedder: values.raw ? null : embedder, rebuild: values.rebuild, raw: values.raw,
         log: values.verbose ? (m) => console.log(m) : undefined,
       });
       console.log(`index ${schema}: ${r.indexed} chats indexed, ${r.embedded} passages embedded, ${r.removed} removed, ${Date.now() - started} ms`);
@@ -244,14 +249,17 @@ async function main(): Promise<void> {
     scores.push(await score(name, cases, rank, runs[name]));
   }
 
-  if (values.grid) {
-    const grid: Array<Partial<RankParams>> = [];
-    for (const wAbout of [1, 3, 6]) for (const wUser of [1, 1.5, 3]) for (const wAgent of [0.3, 1]) grid.push({ wAbout, wUser, wAgent, depthMeaning: 0 });
-    for (const wMeaning of [0.5, 1, 1.5, 2]) for (const rrfK of [10, 30, 60]) grid.push({ wMeaning, rrfK });
-    for (const minKeyword of [0, 2, 4, 6, 8]) for (const minMeaning of [0.8, 0.84, 0.86, 0.88, 0.9]) grid.push({ minKeyword, minMeaning });
-    for (const params of grid) {
-      const s = await score(JSON.stringify(params), cases, ranked(params));
-      console.log(`grid ${s.system} r@5=${s.recall5.toFixed(3)} mrr=${s.mrr10.toFixed(3)} negEmpty=${s.negativesEmpty}/${s.negatives}`);
+  if (values.grid || values['grid-json']) {
+    const grid: Array<Partial<RankParams>> = values['grid-json'] ? JSON.parse(await readFile(values['grid-json'], 'utf8')) : [];
+    const zero = { minKeyword: 0, minMeaning: 0 };
+    if (!values['grid-json']) for (const wAbout of [1, 3, 6]) for (const wUser of [1, 1.5, 3]) for (const wAgent of [0.3, 1]) grid.push({ ...zero, wAbout, wUser, wAgent, depthMeaning: 0 });
+    if (!values['grid-json']) for (const wMeaning of [0.5, 0.75, 1, 1.5]) for (const rrfK of [10, 30, 60]) grid.push({ ...zero, wMeaning, rrfK });
+    if (!values['grid-json']) for (const minKeyword of [0.2, 0.3, 0.4, 0.5, 0.6]) for (const minMeaning of [0.84, 0.86, 0.88, 0.9]) grid.push({ minKeyword, minMeaning });
+    for (let i = 0; i < grid.length; i += 4) {
+      const batch = await Promise.all(grid.slice(i, i + 4).map((params) => score(JSON.stringify(params), cases, ranked(params))));
+      for (const s of batch) {
+        console.log(`grid ${s.system} r@5=${s.recall5.toFixed(3)} mrr=${s.mrr10.toFixed(3)} negEmpty=${s.negativesEmpty}/${s.negatives}`);
+      }
     }
   }
 

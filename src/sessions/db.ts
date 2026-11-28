@@ -24,6 +24,11 @@ export function sessionsDb(): pg.Pool {
       max: Number(process.env.SESSIONS_PG_POOL_MAX || 4),
       idleTimeoutMillis: 30_000,
       keepAlive: true,
+      // A connection the network dropped silently would otherwise wait for
+      // the OS keepalive (two hours). Probe after 10 s idle, and give up on
+      // any query after 60 s (chat search sets a tighter limit per query).
+      keepAliveInitialDelayMillis: 10_000,
+      query_timeout: Number(process.env.SESSIONS_QUERY_TIMEOUT_MS || 60_000),
       connectionTimeoutMillis: 10_000,
     });
     pool.on('error', (err) => {
