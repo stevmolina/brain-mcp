@@ -92,7 +92,7 @@ export interface RankOptions {
   vector?: number[] | null;
   /** Extra columns over `sessions s` to return with each chat (store.ts summary columns). */
   select?: string;
-  /** Client-side limit for the ranking query, in ms (default 8000). */
+  /** Limit for the ranking query, in ms (default 8000; `context` passes less). */
   timeoutMs?: number;
 }
 
@@ -232,13 +232,25 @@ export async function rankChats<T extends object = object>(
   });
 }
 
-/** Whether the index has rows for this owner (else callers use the old search). */
+/**
+ * Whether a full sync has put all of this owner's chats in the index (else
+ * callers use the old search). A yes is kept for five minutes, so the check
+ * costs a round trip only now and then; a no is asked again each time.
+ */
+const readyCache = new Map<string, number>();
 export async function indexReady(db: pg.Pool, ownerId: string, schema = DEFAULT_INDEX_SCHEMA): Promise<boolean> {
   checkSchema(schema);
+  const key = `${schema}:${ownerId}`;
+  if ((readyCache.get(key) ?? 0) > Date.now()) return true;
   try {
-    const { rows } = await db.query(`select 1 from ${schema}.session_docs where owner = $1 limit 1`, [ownerId]);
+    const { rows } = await db.query(`select 1 from ${schema}.session_index_meta where key = $1`, [`ready:${ownerId}`]);
+    if (rows.length) readyCache.set(key, Date.now() + 5 * 60_000);
     return rows.length > 0;
   } catch {
     return false;
   }
+}
+
+export function resetIndexReady(): void {
+  readyCache.clear();
 }

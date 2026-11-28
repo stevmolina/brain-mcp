@@ -84,6 +84,8 @@ async function createIndexSchema(db: pg.Pool, schema: string): Promise<void> {
     await client.query(`create table if not exists ${s}.session_index_meta (key text primary key, value text not null)`);
     const { rows } = await client.query<{ value: string }>(`select value from ${s}.session_index_meta where key = 'version'`);
     if (rows[0]?.value !== INDEX_VERSION) {
+      // Nobody is "ready" on a rebuilt index until a full sync finishes.
+      await client.query(`delete from ${s}.session_index_meta where key like 'ready:%' or key = 'embed_model'`);
       await client.query(`drop table if exists ${s}.session_docs, ${s}.session_postings, ${s}.session_chunks, ${s}.session_boilerplate`);
       await client.query(`drop text search configuration if exists ${tsConfig(s)}`);
       await client.query(`drop text search dictionary if exists ${s}.chat_es_stop`);
@@ -285,6 +287,7 @@ export async function syncSessionIndex(db: pg.Pool, options: SyncOptions = {}): 
     if (!got[0]?.ok) return result;
     try {
       const s = schema;
+      await checkEmbedModel(db, s, options.embedder ?? null);
       const owners = options.owner
         ? [options.owner]
         : (await db.query<{ owner: string }>(`select distinct owner from sessions where owner is not null`)).rows.map((r) => r.owner);
@@ -330,10 +333,21 @@ export async function syncSessionIndex(db: pg.Pool, options: SyncOptions = {}): 
             [keys.map((k) => k.source), keys.map((k) => k.id), owner, INDEX_VERSION],
           );
           const chats = rows.map((row) => prepareChat(row, boiler, { raw: options.raw }));
-          await writeChats(db, s, chats);
+          // Vectors first: if embedding fails, the chats stay stale and the
+          // next cycle tries again, instead of counting as indexed without them.
           result.embedded += await embedChunks(db, s, chats, options.embedder ?? null);
+          await writeChats(db, s, chats);
           result.indexed += chats.length;
           options.log?.(`indexed ${result.indexed}/${todo.length} (${owner})`);
+        }
+        // Search uses the index for an owner only once all their chats are in
+        // it; until then the old search answers (rank.ts indexReady).
+        if (todo.length === stale.length) {
+          await db.query(
+            `insert into ${s}.session_index_meta (key, value) values ($1, now()::text)
+             on conflict (key) do update set value = excluded.value`,
+            [`ready:${owner}`],
+          );
         }
       }
     } finally {
@@ -343,6 +357,25 @@ export async function syncSessionIndex(db: pg.Pool, options: SyncOptions = {}): 
     lock.release();
   }
   return result;
+}
+
+/**
+ * Vectors belong to one model. When the model changes (or meaning search is
+ * turned on after running without it), every chat is marked stale so its
+ * passages are embedded with the new one. An index without the marker yet is
+ * taken to match the current model.
+ */
+async function checkEmbedModel(db: pg.Pool, s: string, embedder: Embedder | null): Promise<void> {
+  const current = embedder?.model ?? '';
+  const { rows } = await db.query<{ value: string }>(`select value from ${s}.session_index_meta where key = 'embed_model'`);
+  const stored = rows[0]?.value;
+  if (stored === current) return;
+  if (stored !== undefined && current) await db.query(`update ${s}.session_docs set src_fp = ''`);
+  await db.query(
+    `insert into ${s}.session_index_meta (key, value) values ('embed_model', $1)
+     on conflict (key) do update set value = excluded.value`,
+    [current],
+  );
 }
 
 /**

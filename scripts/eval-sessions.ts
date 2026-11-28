@@ -168,6 +168,7 @@ async function main(): Promise<void> {
       where ($1::text is null or owner = $1) order by owner, id`,
     [values.owner ?? null],
   );
+  if (!cases.length) throw new Error('no eval cases in brain_mcp.search_eval_cases');
   const cutoff = values.frozen ? new Date(Math.min(...cases.map((c) => new Date(c.created_at).getTime()))) : null;
   const frozenFilter = cutoff ? { sql: 'coalesce(s.started_at, s.updated_at) < $1::timestamptz', args: [cutoff.toISOString()] } : undefined;
   if (!cases.length) throw new Error('no eval cases in brain_mcp.search_eval_cases');

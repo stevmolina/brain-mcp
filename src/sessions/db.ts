@@ -29,6 +29,8 @@ export function sessionsDb(): pg.Pool {
       // any query after 60 s (chat search sets a tighter limit per query).
       keepAliveInitialDelayMillis: 10_000,
       query_timeout: Number(process.env.SESSIONS_QUERY_TIMEOUT_MS || 60_000),
+      // The same limit on the server, so a query the client gave up on stops too.
+      statement_timeout: Number(process.env.SESSIONS_QUERY_TIMEOUT_MS || 60_000),
       connectionTimeoutMillis: 10_000,
     });
     pool.on('error', (err) => {

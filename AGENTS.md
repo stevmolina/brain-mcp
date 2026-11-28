@@ -264,14 +264,20 @@ sync writes them again. Bumping `INDEX_VERSION` does that on deploy.
   text leaves the box. Each chat has a few passages (title and card, each user
   message with the start of its answer); a chat scores its best passage.
   Vectors are cached by model and text hash in `brain_mcp.session_embeddings`.
+- **Filler.** Chat questions drop English asks too ("can you check"); claim
+  queries keep those words (`CLAIM_FILLER_WORDS`), since "help" or "show" can
+  be the subject of a claim.
 - **Fusion.** Reciprocal rank fusion of the two lists, one SQL round trip. A
   chat is returned only when it covers enough of the question's
   rarity-weighted words (`minKeyword`) or its best passage is close enough
   (`minMeaning`); otherwise nothing comes back rather than a wrong chat.
 - **Freshness.** The sessions CLI writes straight to the database, so the
   server compares fingerprints every 2 minutes (`src/sessions/index-loop.ts`,
-  `SESSION_INDEX_INTERVAL_MS`, 0 turns it off) and indexes what changed. Until
-  the index holds a caller's chats, the old word search answers.
+  `SESSION_INDEX_INTERVAL_MS`, 0 turns it off) and indexes what changed,
+  vectors first (a failed embed leaves the chat stale for the next cycle).
+  Until a sync has put all of a person's chats in the index (a `ready:<owner>`
+  row in `session_index_meta`), the old word search answers. A new embedding
+  model marks every chat stale. `context` gives chat search 1.5 s at most.
 - **Model** lives in the image (`MODEL_DIR=/app/models`, offline). It takes
   about 650 MB of memory, so the container cap is 1.25 GB. `SESSION_EMBEDDINGS=off`
   runs on keywords alone. pgvector is installed on the sessions database

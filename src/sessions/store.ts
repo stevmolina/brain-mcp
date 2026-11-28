@@ -302,6 +302,8 @@ export async function sessionsForQuestion(
       limit,
       brains: brainIds,
       embedder: readyEmbedder(),
+      // Callers of `context` wait 3 to 4.5 s in all; chats must not eat it.
+      timeoutMs: 1_500,
       select: `${summaryColumns(withCard)}, ${withCard ? `left(coalesce(s.card, ''), 400)` : `''`} as snippet`,
     });
     return ranked.map(rankedSummary);

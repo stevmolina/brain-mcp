@@ -55,8 +55,13 @@ export function stripInjected(text: string): string {
 
   // 2. Tagged blocks, innermost first, until nothing changes. A keep tag is
   // unwrapped; any other closed block goes. Bounded, so odd input cannot loop.
-  const block = /<([A-Za-z][\w:.-]{0,60})(?:\s[^<>]{0,400})?>([\s\S]*?)<\/\1\s*>/g;
-  for (let i = 0; i < 8; i += 1) {
+  // Only names that also appear as a closing tag are tried: an opening tag
+  // that never closes (code like `Promise<void>`) would otherwise make the
+  // lazy match scan to the end of the turn, once per such tag.
+  const closed = [...new Set([...out.matchAll(/<\/([A-Za-z][\w:.-]{0,60})\s*>/g)].map((m) => m[1]!))];
+  const names = closed.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const block = names ? new RegExp(`<(${names})(?:\\s[^<>]{0,400})?>([\\s\\S]*?)<\\/\\1\\s*>`, 'g') : null;
+  for (let i = 0; block && i < 8; i += 1) {
     const next = out.replace(block, (_whole, tag: string, inner: string) =>
       KEEP_TAGS.has(tag.toLowerCase()) ? `\n${inner}\n` : '\n',
     );

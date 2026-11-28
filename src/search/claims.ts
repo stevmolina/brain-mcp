@@ -20,7 +20,7 @@
  * resolved through requireBrain; this module never chooses brains itself.
  */
 import { db } from '../db/client.js';
-import { isFiller } from './words.js';
+import { isClaimFiller } from './words.js';
 import type { ClaimRow } from '../types.js';
 
 export type MatchTier = 'all_words' | 'any_words';
@@ -53,7 +53,7 @@ export interface ClaimSearchOptions {
 /** The query without filler words, or the query itself when only filler is left. */
 export function withoutFiller(query: string): string {
   const words = query.trim().split(/\s+/).filter(Boolean);
-  const kept = words.filter((word) => !isFiller(word));
+  const kept = words.filter((word) => !isClaimFiller(word));
   return kept.length ? kept.join(' ') : query.trim();
 }
 
