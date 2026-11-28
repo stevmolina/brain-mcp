@@ -77,7 +77,8 @@ across reflows and changes when the claim changes.
 heading or its page path, weighted A, B, C). When that returns fewer than the
 limit, any word: stopwords dropped, prefixes, and a claim must cover 1 of 1-2
 words, 2 of 3-5, 3 of 6+. Filler a question carries and Postgres keeps
-("still", "currently", `FILLER` in the file) is dropped first. Ranking in the
+in English or Spanish ("still", "currently", "che", "tengo", `src/search/words.ts`)
+is dropped first. Ranking in the
 any-word tier: the share of query words covered, each weighted by how rare it
 is in these brains (so "22" or a client name outweighs "open"), in quarters;
 then rows from the brain's register pages (profile `registerPages`); then more
@@ -240,6 +241,63 @@ It is a separate database on purpose: the brain database is derived from git
   `WEB_SESSION_SECRET` (32+ chars) the pages are not mounted. Tests point
   `SESSIONS_DATABASE_URL` at `DATABASE_URL` and create a fixture `sessions` table.
 
+## Chat search
+
+`context` level 4 and `search_sessions` find past chats through an index in
+the sessions database, schema `brain_mcp` (`src/sessions/search-index.ts`).
+It is derived from `sessions` and rebuildable: drop the tables and the next
+sync writes them again. Bumping `INDEX_VERSION` does that on deploy.
+
+- **Clean first** (`src/sessions/clean.ts`). Agent apps paste 10-30k
+  characters of instructions in front of the person's message. A Pokebots turn
+  keeps what follows its last `--- current message ---`; tagged blocks go,
+  except `<user_query>`-style wrappers, which are unwrapped; a line found in 4+
+  of the same person's chats is pasted text and goes too.
+- **Keywords: BM25F in plain Postgres.** Words come from a text search config
+  (`chat_words`): Spanish stopwords dropped, accents removed, English stemming.
+  Postings (word, field, chat, count) for three fields: title and card, the
+  person's messages, the agent's answers. `src/sessions/rank.ts` scores them
+  in SQL: rare words count more, repeats saturate, long chats are corrected.
+  The question loses filler in both languages first (`src/search/words.ts`).
+- **Meaning: local embeddings, pgvector.** Multilingual E5 small runs inside
+  the server (`src/sessions/embed.ts`, ONNX via transformers.js), so no chat
+  text leaves the box. Each chat has a few passages (title and card, each user
+  message with the start of its answer); a chat scores its best passage.
+  Vectors are cached by model and text hash in `brain_mcp.session_embeddings`.
+- **Filler.** Chat questions drop English asks too ("can you check"); claim
+  queries keep those words (`CLAIM_FILLER_WORDS`), since "help" or "show" can
+  be the subject of a claim.
+- **Fusion.** Reciprocal rank fusion of the two lists, one SQL round trip. A
+  chat is returned only when it covers enough of the question's
+  rarity-weighted words (`minKeyword`) or its best passage is close enough
+  (`minMeaning`); otherwise nothing comes back rather than a wrong chat.
+- **Freshness.** The sessions CLI writes straight to the database, so the
+  server compares fingerprints every 2 minutes (`src/sessions/index-loop.ts`,
+  `SESSION_INDEX_INTERVAL_MS`, 0 turns it off) and indexes what changed,
+  vectors first (a failed embed leaves the chat stale for the next cycle).
+  Until a sync has put all of a person's chats in the index (a `ready:<owner>`
+  row in `session_index_meta`), the old word search answers. A new embedding
+  model marks every chat stale. `context` gives chat search 1.5 s at most.
+- **Model** lives in the image (`MODEL_DIR=/app/models`, offline). It takes
+  about 650 MB of memory, so the container cap is 1.25 GB. `SESSION_EMBEDDINGS=off`
+  runs on keywords alone. pgvector is installed on the sessions database
+  server (Contabo, built image); `unaccent` is added by the index itself.
+- **Backfill or rebuild** from a laptop: `doppler run -- pnpm index-sessions
+  [--rebuild]` (vectors land in the shared cache, so the server embeds nothing).
+
+### Evaluation
+
+`pnpm eval:sessions` scores chat search on labeled real questions:
+recall@5 and MRR@10, plus how often a question with no matching chat gets
+nothing. The questions quote real chats, so they live in the sessions database
+(`brain_mcp.search_eval_cases`, loaded with `--load cases.json --owner <id>`),
+never in this public repo; the script prints aggregates only unless
+`--verbose`. It scores only chats started before the cases were written, so new
+chats do not move the numbers. `eval/sessions-baseline.json` holds the floor;
+the `eval` CI job builds a scratch index (`brain_mcp_ci_<hash of the indexing
+code>`) and fails a pull request that scores below it. Raise the floor when a
+change scores higher; never lower it to pass.
+
 ## Running
 
 Secrets live in Doppler project `brain-mcp`, configs `dev` and `prd`. Never write
@@ -282,8 +340,10 @@ rows, so never point `dev` at the real sessions database.
 
 ## Open, deliberately
 
-- **No embeddings.** Sending tenant text to an embedding provider is a
-  subprocessor question, sharper because this runs on a personal box. Postgres
-  full-text is enough at current volume. Do not add embeddings without asking.
+- **No embedding provider.** Sending tenant text to an outside embedding API
+  is a subprocessor question, sharper because this runs on a personal box.
+  Chat search embeds with a model that runs inside this server (see Chat
+  search); claims still use Postgres full-text only. Do not send text to an
+  outside provider without asking.
 - The reconciler records findings only. Turning a finding into a proposed edit
   goes through the write path, which opens a pull request.

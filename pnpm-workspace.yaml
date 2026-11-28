@@ -2,3 +2,8 @@ packages:
   - .
 allowBuilds:
   esbuild: true
+  # Chat-search model runtime: the CPU binaries ship in the packages, the
+  # install scripts only fetch GPU builds or print notices. Not needed.
+  onnxruntime-node: false
+  protobufjs: false
+  sharp: false

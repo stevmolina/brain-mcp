@@ -13,6 +13,8 @@
  */
 import { randomBytes } from 'node:crypto';
 import { sessionsDb } from './db.js';
+import { readyEmbedder } from './embed.js';
+import { indexReady, rankChats, type RankedChat } from './rank.js';
 
 export interface Turn {
   role: string;
@@ -37,8 +39,11 @@ export interface SessionSummary {
   /** A short summary of the chat, when the sessions CLI has written one. */
   card?: string | null;
   card_updated_at?: string | null;
-  /** Which search found it: the title and card, or the full chat. */
-  match?: 'card' | 'body';
+  /**
+   * Which search found it. With the chat-search index: `keyword`, `meaning`
+   * or `both` lists. Without it (old path): the title and card, or the body.
+   */
+  match?: 'card' | 'body' | 'keyword' | 'meaning' | 'both';
 }
 
 export interface ShareView {
@@ -202,6 +207,23 @@ export async function searchSessions(ownerId: string, options: SearchOptions): P
   const withCard = await hasCardColumns();
   const columns = summaryColumns(withCard);
 
+  // The chat-search index, when built: keywords and meaning, fused (rank.ts).
+  // The filters above apply inside it, over the same owner-filtered rows.
+  if (query && (await indexReady(sessionsDb(), ownerId))) {
+    const ranked = await rankChats<SummaryRow>(sessionsDb(), {
+      ownerId,
+      question: query,
+      limit,
+      filter: {
+        sql: filters,
+        args: args.slice(0, 8),
+      },
+      embedder: readyEmbedder(),
+      select: `${columns}, ${withCard ? `left(coalesce(s.card, ''), 240)` : `''`} as snippet`,
+    });
+    return ranked.map(rankedSummary);
+  }
+
   // With cards, the title and card are searched first: they say what a chat
   // was about, while the body matches every word anyone ever typed.
   let first: SessionSummary[] = [];
@@ -254,13 +276,48 @@ export async function searchSessions(ownerId: string, options: SearchOptions): P
   return [...first, ...rest].slice(0, limit);
 }
 
+function rankedSummary(hit: RankedChat & { row: SummaryRow }): SessionSummary {
+  const match = hit.keyword !== null && hit.meaning !== null ? 'both' : hit.keyword !== null ? 'keyword' : 'meaning';
+  return { ...toSummary(hit.row), match };
+}
+
 /**
- * The caller's own chats filed under the given brains that cover some of the
- * question's words, for `context`. Title and card first (when the card columns
- * exist), then the full chat. Same coverage floor as claim search: 1 of 1-2
- * words, 2 of 3-5, 3 of 6 or more. Owner-filtered like every read here.
+ * The caller's own chats filed under the given brains that best fit the
+ * question, for `context`. Uses the chat-search index (keywords and meaning,
+ * rank.ts) once it holds the caller's chats; until then, the older word
+ * search below. Owner-filtered like every read here.
  */
 export async function sessionsForQuestion(
+  ownerId: string,
+  brainIds: string[],
+  question: string,
+  limit: number,
+): Promise<SessionSummary[]> {
+  if (!brainIds.length || !question.trim()) return [];
+  if (await indexReady(sessionsDb(), ownerId)) {
+    const withCard = await hasCardColumns();
+    const ranked = await rankChats<SummaryRow>(sessionsDb(), {
+      ownerId,
+      question,
+      limit,
+      brains: brainIds,
+      embedder: readyEmbedder(),
+      // Callers of `context` wait 3 to 4.5 s in all; chats must not eat it.
+      timeoutMs: 1_500,
+      select: `${summaryColumns(withCard)}, ${withCard ? `left(coalesce(s.card, ''), 400)` : `''`} as snippet`,
+    });
+    return ranked.map(rankedSummary);
+  }
+  return legacySessionsForQuestion(ownerId, brainIds, question, limit);
+}
+
+/**
+ * The search before the index: chats that cover some of the question's words
+ * (English stemming), title and card first, then the full chat. Coverage
+ * floor: 1 of 1-2 words, 2 of 3-5, 3 of 6 or more. Kept as the fallback and
+ * as the baseline the evaluation compares against.
+ */
+export async function legacySessionsForQuestion(
   ownerId: string,
   brainIds: string[],
   question: string,

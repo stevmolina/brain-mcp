@@ -20,6 +20,7 @@
  * resolved through requireBrain; this module never chooses brains itself.
  */
 import { db } from '../db/client.js';
+import { isClaimFiller } from './words.js';
 import type { ClaimRow } from '../types.js';
 
 export type MatchTier = 'all_words' | 'any_words';
@@ -44,19 +45,15 @@ export interface ClaimSearchOptions {
 }
 
 /**
- * Words of a question that say nothing about the subject. Postgres' own
- * stopwords (what, is, the, ...) are already dropped; these are the ones it
- * keeps. Stripped from the query unless nothing else would be left.
+ * Filler a question carries, in English and Spanish (`./words.ts`): "still",
+ * "currently", "che", "chequea", "tengo", "algun". Postgres' own English
+ * stopwords are dropped by the index already. Stripped from the query unless
+ * nothing else would be left.
  */
-const FILLER = new Set([
-  'still', 'yet', 'currently', 'now', 'today', 'please', 'tell', 'know', 'anything', 'everything', 'something',
-  'also', 'ever', 'just', 'really', 'actually',
-]);
-
 /** The query without filler words, or the query itself when only filler is left. */
 export function withoutFiller(query: string): string {
   const words = query.trim().split(/\s+/).filter(Boolean);
-  const kept = words.filter((word) => !FILLER.has(word.toLowerCase().replace(/[^a-z]/g, '')));
+  const kept = words.filter((word) => !isClaimFiller(word));
   return kept.length ? kept.join(' ') : query.trim();
 }
 
