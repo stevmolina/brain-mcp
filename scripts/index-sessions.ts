@@ -30,6 +30,10 @@ try {
     log: (message) => console.error(message),
   });
   console.log(JSON.stringify({ ...result, ms: Date.now() - started }));
+  if (values.rebuild && !result.indexed && !result.removed) {
+    console.error('Nothing was rebuilt: another sync holds the lock (the server loop?). Run it again in a minute.');
+    process.exitCode = 1;
+  }
 } finally {
   await closeSessionsDb();
 }

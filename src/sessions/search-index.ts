@@ -288,9 +288,16 @@ export async function syncSessionIndex(db: pg.Pool, options: SyncOptions = {}): 
     try {
       const s = schema;
       await checkEmbedModel(db, s, options.embedder ?? null);
+      // Owners with chats, plus owners only the index still has (all their
+      // chats deleted), so their rows are cleaned up too.
       const owners = options.owner
         ? [options.owner]
-        : (await db.query<{ owner: string }>(`select distinct owner from sessions where owner is not null`)).rows.map((r) => r.owner);
+        : (
+            await db.query<{ owner: string }>(
+              `select owner from sessions where owner is not null union select owner from ${s}.session_docs`,
+            )
+          ).rows.map((r) => r.owner);
+      let budget = options.max ?? Infinity;
 
       for (const owner of owners) {
         const boiler = options.raw ? undefined : await loadBoilerplate(db, s, owner, options.rebuild ?? false, options.log);
@@ -319,8 +326,8 @@ export async function syncSessionIndex(db: pg.Pool, options: SyncOptions = {}): 
             order by coalesce(s.updated_at, s.started_at) desc nulls last`,
           [owner, INDEX_VERSION],
         );
-        const max = options.max ?? Infinity;
-        const todo = stale.slice(0, max);
+        const todo = stale.slice(0, Math.max(0, budget));
+        budget -= todo.length;
         result.pending += stale.length - todo.length;
         const size = options.batch ?? 50;
         for (let i = 0; i < todo.length; i += size) {
@@ -400,7 +407,8 @@ async function loadBoilerplate(
   for (let i = 0; i < ids.length; i += 200) {
     const part = ids.slice(i, i + 200);
     const { rows } = await db.query<{ texts: string[] | null }>(
-      `select (select array_agg(t->>'text') from jsonb_array_elements(s.turns) t where t->>'role' = 'user') as texts
+      `select (select array_agg(t->>'text') from jsonb_array_elements(s.turns) t
+                  where t->>'role' = 'user' and t->>'text' is not null) as texts
          from sessions s join unnest($1::text[], $2::text[]) k(source, id) on k.source = s.source and k.id = s.id
         where s.owner = $3`,
       [part.map((r) => r.source), part.map((r) => r.id), owner],

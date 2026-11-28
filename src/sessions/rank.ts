@@ -139,7 +139,7 @@ export async function rankChats<T extends object = object>(
       select d.source, d.id, d.about_len, d.user_len, d.agent_len
         from ${s}.session_docs d
         join sessions s on s.source = d.source and s.id = d.id and s.owner = $1
-       where d.owner = $1 and ($2::text[] is null or d.brain = any($2)) and (${extra})
+       where d.owner = $1 and ($2::text[] is null or s.brain = any($2)) and (${extra})
     ), terms as (
       select distinct lexeme from unnest(to_tsvector('${tsConfig(s)}', $3::text))
        where length(lexeme) between 2 and 40

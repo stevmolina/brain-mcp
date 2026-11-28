@@ -70,13 +70,23 @@ async function loadCases(file: string, owner: string): Promise<void> {
   const raw = JSON.parse(await readFile(file, 'utf8')) as Array<{
     id: string; query: string; lang?: string; kind?: string[]; relevant?: Record<string, number>; exclude?: string[]; note?: string;
   }>;
-  await db.query('delete from brain_mcp.search_eval_cases where owner = $1', [owner]);
-  for (const c of raw) {
-    await db.query(
-      `insert into brain_mcp.search_eval_cases (owner, id, query, lang, kinds, relevant, exclude, note)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [owner, c.id, c.query, c.lang ?? null, c.kind ?? [], JSON.stringify(c.relevant ?? {}), c.exclude ?? [], c.note ?? null],
-    );
+  const client = await db.connect();
+  try {
+    await client.query('begin');
+    await client.query('delete from brain_mcp.search_eval_cases where owner = $1', [owner]);
+    for (const c of raw) {
+      await client.query(
+        `insert into brain_mcp.search_eval_cases (owner, id, query, lang, kinds, relevant, exclude, note)
+         values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [owner, c.id, c.query, c.lang ?? null, c.kind ?? [], JSON.stringify(c.relevant ?? {}), c.exclude ?? [], c.note ?? null],
+      );
+    }
+    await client.query('commit');
+  } catch (error) {
+    await client.query('rollback').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
   }
   console.log(`loaded ${raw.length} cases for one owner`);
 }
@@ -208,10 +218,11 @@ async function main(): Promise<void> {
   const vectors = new Map<string, number[]>();
   const vectorOf = async (c: Case) => {
     if (!embedder) return null;
-    let v = vectors.get(c.id);
+    const key = `${c.owner}:${c.id}`;
+    let v = vectors.get(key);
     if (!v) {
       v = (await embedder.embed([c.query], 'query'))[0]!;
-      vectors.set(c.id, v);
+      vectors.set(key, v);
     }
     return v;
   };
@@ -219,17 +230,18 @@ async function main(): Promise<void> {
   const ranked = (params: Partial<RankParams>): Ranker => async (c) => {
     const vector = params.depthMeaning === 0 ? null : await vectorOf(c);
     const hits = await rankChats(db, {
-      ownerId: c.owner, question: c.query, limit: 10, schema, embedder, vector, params: { ...extra, ...params },
+      // Room for the case's excluded chats, so 10 remain after dropping them.
+      ownerId: c.owner, question: c.query, limit: 10 + c.exclude.length, schema, embedder, vector, params: { ...extra, ...params },
       filter: frozenFilter,
     });
     return hits.map((h) => `${h.source}:${h.id}`);
   };
   const systems: Record<string, Ranker> = {
     legacy: async (c) =>
-      (await legacySessionsForQuestion(c.owner, brainsOf.get(c.owner) ?? [], c.query, 30))
+      (await legacySessionsForQuestion(c.owner, brainsOf.get(c.owner) ?? [], c.query, 30 + c.exclude.length))
         .map((s) => `${s.source}:${s.id}`)
         .filter(inFrozen)
-        .slice(0, 10),
+        .slice(0, 10 + c.exclude.length),
     keyword: ranked({ depthMeaning: 0 }),
     meaning: ranked({ depthKeyword: 0 }),
     hybrid: ranked({}),
