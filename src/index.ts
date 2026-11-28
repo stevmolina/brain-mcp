@@ -30,6 +30,7 @@ import { handleGithubWebhook } from './github/webhook.js';
 import { buildServer } from './tools/index.js';
 import { db } from './db/client.js';
 import { sessionsEnabled } from './sessions/db.js';
+import { startSessionIndexer } from './sessions/index-loop.js';
 import { mountRest } from './api/routes.js';
 import { mountWeb } from './web/routes.js';
 import { markActivity, startWarmer } from './warm.js';
@@ -181,6 +182,8 @@ if (startedDirectly) {
   app.listen(config.port, config.bindHost, () => {
     // Keep the first call of a chat as fast as the rest (see src/warm.ts).
     void startWarmer()?.cycle();
+    // Keep the chat-search index current and load its model (src/sessions/index-loop.ts).
+    if (sessionsEnabled()) startSessionIndexer();
     console.log(
       JSON.stringify({
         level: 'info',

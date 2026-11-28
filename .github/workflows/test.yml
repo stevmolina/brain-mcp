@@ -32,7 +32,8 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        # pgvector: chat search stores passage vectors (src/sessions/search-index.ts).
+        image: pgvector/pgvector:0.8.1-pg17
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: brain_test
@@ -70,3 +71,44 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run typecheck
       - run: pnpm run test
+
+  # Scores chat search on the real, private eval set (brain_mcp.search_eval_cases
+  # in the sessions database) and fails when a score drops below the floor in
+  # eval/sessions-baseline.json. Prints aggregate numbers only: this repo is
+  # public, so no question or chat text reaches the log. Fork pull requests get
+  # no secrets and skip it.
+  eval:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SESSIONS_DATABASE_URL: ${{ secrets.SESSIONS_EVAL_DATABASE_URL }}
+      MODEL_DIR: ${{ github.workspace }}/.models
+      DATABASE_URL: postgres://unused:unused@127.0.0.1:5432/unused
+      MCP_RESOURCE_URL: https://brain.mcpbox.dev/mcp
+      AUTHKIT_ISSUER: https://navigable-desert-09-staging.authkit.app
+      WORKOS_API_KEY: ci-placeholder
+      WORKOS_CLIENT_ID: ci-placeholder
+      GITHUB_APP_ID: "1"
+      GITHUB_APP_PRIVATE_KEY_B64: Y2k=
+      GITHUB_WEBHOOK_SECRET: ci-placeholder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v4
+        with:
+          path: .models
+          key: embed-model-multilingual-e5-small-q8
+      # One scratch index per version of the indexing code, reused across runs
+      # (only changed chats are re-indexed, vectors come from the shared cache).
+      - name: Score chat search
+        run: |
+          schema="brain_mcp_ci_$(cat src/sessions/clean.ts src/sessions/search-index.ts | sha256sum | cut -c1-12)"
+          pnpm -s eval:sessions --schema "$schema" --build --systems keyword,hybrid --check eval/sessions-baseline.json --prune-ci 7

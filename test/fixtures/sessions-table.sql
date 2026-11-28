@@ -20,3 +20,6 @@ CREATE TABLE IF NOT EXISTS sessions (
   ) STORED,
   PRIMARY KEY (source, id)
 );
+-- Added by the CLI after the first release; the chat-search index keys on it.
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS clean_fingerprint text;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS repos text[];

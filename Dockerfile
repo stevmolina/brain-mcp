@@ -9,6 +9,9 @@ COPY tsconfig.json ./
 COPY src ./src
 COPY scripts ./scripts
 RUN pnpm build
+# The chat-search embedding model (src/sessions/embed.ts), baked in so the
+# server never downloads it at runtime. About 120 MB.
+RUN node -e "import('@huggingface/transformers').then(async ({ pipeline, env }) => { env.cacheDir = '/app/models'; await pipeline('feature-extraction', 'Xenova/multilingual-e5-small', { dtype: 'q8' }); })"
 
 FROM node:24-slim AS deps
 WORKDIR /app
@@ -21,12 +24,13 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/models ./models
 COPY package.json ./
 COPY db ./db
 COPY site ./site
 USER node
 EXPOSE 8080
-ENV PORT=8080 BIND_HOST=0.0.0.0
+ENV PORT=8080 BIND_HOST=0.0.0.0 MODEL_DIR=/app/models MODEL_OFFLINE=1
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||8080)+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "dist/src/index.js"]
